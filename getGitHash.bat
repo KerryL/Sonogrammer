@@ -2,7 +2,7 @@
 REM This script generates a .cpp file containing the current git hash string
 
 REM This is the file to which output will be written
-SET outputPath="%1../src/"
+SET outputPath="%1/src/"
 SET outputFile=gitHash.cpp
 FOR /f %%i IN ('git describe --tags --abbrev^=0') DO SET gitTag=%%i
 FOR /f %%i IN ('git rev-parse --short HEAD') DO SET gitHash=%%i
