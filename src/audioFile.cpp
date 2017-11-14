@@ -132,15 +132,21 @@ void AudioFile::ProbeAudioFile()
 
 	AVFormatContext* formatContext(avformat_alloc_context());
 	if (!formatContext)
+	{
+		// TODO:  Message
 		return;
+	}
 
 	if (avformat_open_input(&formatContext, fileName.c_str(), nullptr, nullptr) != 0)
+	{
+		// TODO:  Message
 		return;
+	}
 
 	AVDictionary *codecOptions(nullptr);
 	AVDictionary **options(FindStreamInfoOptions(formatContext, codecOptions));
 
-	if (avformat_find_stream_info(formatContext, options) <= 0)
+	if (avformat_find_stream_info(formatContext, options) < 0)
 	{
 		// TODO:  Message
 		avformat_close_input(&formatContext);
@@ -148,6 +154,10 @@ void AudioFile::ProbeAudioFile()
 	}
 
 	unsigned int i;
+	for (i = 0; i < formatContext->nb_streams; ++i)
+        av_dict_free(&options[i]);
+    av_freep(&options);
+
 	for (i = 0; i < formatContext->nb_streams; ++i)
 	{
 		const AVStream* s(formatContext->streams[i]);
