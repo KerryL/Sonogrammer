@@ -61,6 +61,8 @@ private:
 	wxCheckBox* includeFiltersInPlayback;
 
 	wxSlider* resolutionSlider;
+	wxStaticText* resolutionText;
+	wxStaticText* timeSliceText;
 	wxComboBox* windowComboBox;
 	wxStaticText* rangeText;
 	wxStaticText* windowSizeText;
@@ -92,7 +94,9 @@ private:
 		idPlayButton,
 		idIncludeFilters,
 
-		idImageControl
+		idImageControl,
+
+		idFFT
 	};
 
 	// Events
@@ -110,10 +114,20 @@ private:
 	void ImageTextCtrlChangedEvent(wxCommandEvent& event);
 	void EditColorMapButtonClickedEvent(wxCommandEvent& event);
 
+	void FFTSettingsChangedEvent(wxCommandEvent& event);
+
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();
+	void UpdateFFTInformation();
+	void UpdateFFTCalculatedInformation();
+	void UpdateSonogramInformation();
+	void UpdateSonogram();
 
 	std::unique_ptr<AudioFile> audioFile;
+
+	unsigned int GetNumberOfResolutions() const;
+	double GetResolution() const;
+	unsigned int GetWindowSize() const;
 
 	DECLARE_EVENT_TABLE();
 };

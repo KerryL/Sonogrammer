@@ -7,6 +7,7 @@
 #include "mainFrame.h"
 #include "sonogrammerApp.h"
 #include "audioFile.h"
+#include "fft.h"
 
 // wxWidgets headers
 #include <wx/listctrl.h>
@@ -61,6 +62,9 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_LISTBOX_DCLICK(wxID_ANY,				MainFrame::FilterListDoubleClickEvent)
 	EVT_BUTTON(idEditColorMap,					MainFrame::EditColorMapButtonClickedEvent)
 	EVT_TEXT(idImageControl,					MainFrame::ImageTextCtrlChangedEvent)
+	EVT_SLIDER(idFFT,							MainFrame::FFTSettingsChangedEvent)
+	EVT_TEXT(idFFT,								MainFrame::FFTSettingsChangedEvent)
+	EVT_COMBOBOX(idFFT,							MainFrame::FFTSettingsChangedEvent)
 END_EVENT_TABLE();
 
 void MainFrame::CreateControls()
@@ -91,9 +95,9 @@ void MainFrame::CreateControls()
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
 	rightSizer->Add(rightBottomSizer);
 
-	rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Border(wxALL, 5));
-	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5));
-	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Border(wxALL, 5));
+	rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
+	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
+	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 
 	TransferDataToWindow();
 
@@ -192,15 +196,15 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	audioSampleFormatText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
 	audioBitRateText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
 
-	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Duration:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Duration")));
 	audioInfoSizer->Add(audioDurationText);
-	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Rate:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Rate")));
 	audioInfoSizer->Add(audioSampleRateText);
-	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Channel Format:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Channel Format")));
 	audioInfoSizer->Add(audioChannelFormatText);
-	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Format:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Format")));
 	audioInfoSizer->Add(audioSampleFormatText);
-	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Bit Rate:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Bit Rate")));
 	audioInfoSizer->Add(audioBitRateText);
 
 	return sizer;
@@ -209,17 +213,51 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("FFT")));
-	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(wxVERTICAL));
+	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5,5)));
 	sizer->Add(innerSizer);
 
-	wxSlider* resolutionSlider;
-	wxComboBox* windowComboBox;
-	wxStaticText* rangeText;
-	wxStaticText* windowSizeText;
-	wxTextCtrl* overlapTextBox;
-	wxStaticText* numberOfAveragesText;
+	resolutionSlider = new wxSlider(sizer->GetStaticBox(), idFFT, 1, 0, 1, wxDefaultPosition, wxDefaultSize);
+	resolutionText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+	timeSliceText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 
-	// TODO:  Complete
+	wxArrayString windowChoices;
+	windowChoices.resize(static_cast<unsigned int>(FastFourierTransform::WindowType::Count));
+	unsigned int i;
+	for (i = 0; i < windowChoices.size(); ++i)
+		windowChoices[i] = FastFourierTransform::GetWindowName(static_cast<FastFourierTransform::WindowType>(i));
+
+	windowComboBox = new wxComboBox(sizer->GetStaticBox(), idFFT,
+		FastFourierTransform::GetWindowName(FastFourierTransform::WindowType::Hann), wxDefaultPosition, wxDefaultSize, windowChoices, wxCB_READONLY);
+
+	rangeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+	windowSizeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.0"));
+	numberOfAveragesText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Resolution (Hz)")));
+	innerSizer->Add(resolutionSlider);
+
+	innerSizer->AddStretchSpacer();
+	innerSizer->Add(resolutionText);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Function")));
+	innerSizer->Add(windowComboBox);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Overlap")));
+	innerSizer->Add(overlapTextBox);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Range")));
+	innerSizer->Add(rangeText);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Slize")));
+	innerSizer->Add(timeSliceText);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Size")));
+	innerSizer->Add(windowSizeText);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Averages")));
+	innerSizer->Add(numberOfAveragesText);
+
 	return sizer;
 }
 
@@ -321,6 +359,19 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 }
 
+void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	UpdateFFTCalculatedInformation();
+}
+
+void MainFrame::UpdateFFTCalculatedInformation()
+{
+	resolutionText->SetLabel(wxString::Format(_T("%f Hz"), GetResolution()));
+	windowSizeText->SetLabel(wxString::Format(_T("%d"), GetWindowSize()));
+	//wxStaticText* numberOfAveragesText;
+	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
+}
+
 void MainFrame::HandleNewAudioFile()
 {
 	const wxString fileName(audioFileName->GetValue());
@@ -335,6 +386,9 @@ void MainFrame::HandleNewAudioFile()
 
 	audioFile = std::make_unique<AudioFile>(std::string(fileName.c_str()));
 	UpdateAudioInformation();
+	UpdateFFTInformation();
+	UpdateSonogramInformation();
+	UpdateSonogram();
 }
 
 void MainFrame::UpdateAudioInformation()
@@ -360,4 +414,43 @@ void MainFrame::UpdateAudioInformation()
 		audioBitRateText->SetLabel(wxString::Format(_T("%" PRId64 " kb/s"), audioFile->GetBitRate() / 1000));
 	else
 		audioBitRateText->SetLabel(wxString());
+}
+
+void MainFrame::UpdateFFTInformation()
+{
+	resolutionSlider->SetMin(0);
+	resolutionSlider->SetMax(GetNumberOfResolutions());
+	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);// TODO:  Needs to be improved (balance of resolution and time slice)
+	rangeText->SetLabel(wxString::Format(_T("%0.0f Hz"), audioFile->GetSampleRate() * 0.5));
+
+	UpdateFFTCalculatedInformation();
+}
+
+void MainFrame::UpdateSonogramInformation()
+{
+	timeMinText->SetValue(_T("0.0"));
+	timeMaxText->SetValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
+
+	// TODO:  What about frequency?
+}
+
+void MainFrame::UpdateSonogram()
+{
+	// TODO:  Implement
+}
+
+unsigned int MainFrame::GetNumberOfResolutions() const
+{
+	const unsigned int numberOfPoints(audioFile->GetDuration() * audioFile->GetSampleRate());
+	return FastFourierTransform::GetMaxPowerOfTwo(numberOfPoints) - 1;
+}
+
+double MainFrame::GetResolution() const
+{
+	return static_cast<double>(audioFile->GetSampleRate()) / GetWindowSize();
+}
+
+unsigned int MainFrame::GetWindowSize() const
+{
+	return pow(2, resolutionSlider->GetValue() + 1);
 }
