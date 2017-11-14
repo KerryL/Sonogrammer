@@ -75,7 +75,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(WXWIN)\lib\vc_dll\mswud;$(WXWIN)\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_DEBUG;__WXMSW__;__WXDEBUG__;WXUSINGDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;__WXMSW__;__WXDEBUG__;WXUSINGDLL;_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_dll</AdditionalLibraryDirectories>
@@ -101,7 +101,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(WXWIN)\lib\vc_lib\mswu;$(WXWIN)\include</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;NDEBUG;__WXMSW__;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;__WXMSW__;_CRT_SECURE_NO_WARNINGS;_USE_MATH_DEFINES;</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -129,14 +129,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\dataset2D.cpp" />
+    <ClCompile Include="src\expressionTree.cpp" />
     <ClCompile Include="src\fft.cpp" />
+    <ClCompile Include="src\filter.cpp" />
+    <ClCompile Include="src\gitHash.cpp" />
     <ClCompile Include="src\mainFrame.cpp" />
     <ClCompile Include="src\sonogramGenerator.cpp" />
     <ClCompile Include="src\sonogrammerApp.cpp" />
     <ClCompile Include="src\soundData.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\dataset2D.h" />
+    <ClInclude Include="src\expressionTree.h" />
     <ClInclude Include="src\fft.h" />
+    <ClInclude Include="src\filter.h" />
     <ClInclude Include="src\mainFrame.h" />
     <ClInclude Include="src\sonogramGenerator.h" />
     <ClInclude Include="src\sonogrammerApp.h" />
