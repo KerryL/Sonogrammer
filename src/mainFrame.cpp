@@ -76,7 +76,7 @@ void MainFrame::CreateControls()
 	panelSizer->Add(mainSizer, wxSizerFlags().Expand().Border(wxALL, 5).Proportion(1));
 
 	wxBoxSizer* leftSizer(new wxBoxSizer(wxVERTICAL));
-	mainSizer->Add(leftSizer);
+	mainSizer->Add(leftSizer, wxSizerFlags().Expand());
 
 	leftSizer->Add(CreatePrimaryControls(panel), wxSizerFlags().Border(wxALL, 5));
 	leftSizer->Add(CreateFilterControls(panel), wxSizerFlags().Expand().Border(wxALL, 5).Proportion(1));
@@ -127,19 +127,18 @@ wxSizer* MainFrame::CreatePrimaryControls(wxWindow* parent)
 
 wxSizer* MainFrame::CreateFilterControls(wxWindow* parent)
 {
-	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Filters")));
 	wxBoxSizer* buttonSizer(new wxBoxSizer(wxHORIZONTAL));
 	sizer->Add(buttonSizer, wxSizerFlags().Expand());
-	addFilterButton = new wxButton(parent, idAddFilter, _T("Add"));
-	removeFilterButton = new wxButton(parent, idRemoveFilter, _T("Remove"));
+	addFilterButton = new wxButton(sizer->GetStaticBox(), idAddFilter, _T("Add"));
+	removeFilterButton = new wxButton(sizer->GetStaticBox(), idRemoveFilter, _T("Remove"));
 
-	buttonSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Filters")), wxSizerFlags().Align(wxBOTTOM));
 	buttonSizer->AddStretchSpacer();
 	buttonSizer->Add(addFilterButton, wxSizerFlags().Border(wxRIGHT | wxLEFT, 5));
 	buttonSizer->Add(removeFilterButton, wxSizerFlags().Border(wxBOTTOM, 5));
 
-	filterList = new wxListCtrl(parent);
-	sizer->Add(filterList, wxSizerFlags().Expand());
+	filterList = new wxListCtrl(sizer->GetStaticBox());
+	sizer->Add(filterList, wxSizerFlags().Expand().Proportion(1));
 
 	return sizer;
 }
@@ -171,13 +170,13 @@ wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 
 wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 {
-	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Audio")));
 	wxBoxSizer* buttonSizer(new wxBoxSizer(wxHORIZONTAL));
 	sizer->Add(buttonSizer);
 
-	pauseButton = new wxButton(parent, idPauseButton, _T("Pause"));
-	playButton = new wxButton(parent, idPlayButton, _T("Play"));
-	includeFiltersInPlayback = new wxCheckBox(parent, idIncludeFilters, _T("Include Filters in Playback"));
+	pauseButton = new wxButton(sizer->GetStaticBox(), idPauseButton, _T("Pause"));
+	playButton = new wxButton(sizer->GetStaticBox(), idPlayButton, _T("Play"));
+	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), idIncludeFilters, _T("Include Filters in Playback"));
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
@@ -187,21 +186,21 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	wxFlexGridSizer* audioInfoSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
 	sizer->Add(audioInfoSizer);
 
-	audioDurationText = new wxStaticText(parent, wxID_ANY, _T(""));
-	audioSampleRateText = new wxStaticText(parent, wxID_ANY, _T(""));
-	audioChannelFormatText = new wxStaticText(parent, wxID_ANY, _T(""));
-	audioSampleFormatText = new wxStaticText(parent, wxID_ANY, _T(""));
-	audioBitRateText = new wxStaticText(parent, wxID_ANY, _T(""));
+	audioDurationText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
+	audioSampleRateText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
+	audioChannelFormatText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
+	audioSampleFormatText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
+	audioBitRateText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
 
-	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Duration:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Duration:")));
 	audioInfoSizer->Add(audioDurationText);
-	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Sample Rate:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Rate:")));
 	audioInfoSizer->Add(audioSampleRateText);
-	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Channel Format:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Channel Format:")));
 	audioInfoSizer->Add(audioChannelFormatText);
-	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Sample Format:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Sample Format:")));
 	audioInfoSizer->Add(audioSampleFormatText);
-	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Bit Rate:")));
+	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Bit Rate:")));
 	audioInfoSizer->Add(audioBitRateText);
 
 	return sizer;
@@ -209,40 +208,50 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 
 wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 {
-	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("FFT")));
+	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(wxVERTICAL));
+	sizer->Add(innerSizer);
+
+	wxSlider* resolutionSlider;
+	wxComboBox* windowComboBox;
+	wxStaticText* rangeText;
+	wxStaticText* windowSizeText;
+	wxTextCtrl* overlapTextBox;
+	wxStaticText* numberOfAveragesText;
+
 	// TODO:  Complete
 	return sizer;
 }
 
 wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 {
-	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Sonogram")));
 	wxFlexGridSizer* upperSizer(new wxFlexGridSizer(4, wxSize(5,5)));
 	sizer->Add(upperSizer);
 
 	upperSizer->AddStretchSpacer();
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Min")));
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Max")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Max")));
 	upperSizer->AddStretchSpacer();
 
-	timeMinText = new wxTextCtrl(parent, idImageControl);
-	timeMaxText = new wxTextCtrl(parent, idImageControl);
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Time Range")));
+	timeMinText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
+	timeMaxText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Range")));
 	upperSizer->Add(timeMinText);
 	upperSizer->Add(timeMaxText);
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("sec")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("sec")));
 
-	frequencyMinText = new wxTextCtrl(parent, idImageControl);
-	frequencyMaxText = new wxTextCtrl(parent, idImageControl);
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Frequency Range")));
+	frequencyMinText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
+	frequencyMaxText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Frequency Range")));
 	upperSizer->Add(frequencyMinText);
 	upperSizer->Add(frequencyMaxText);
-	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Hz")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Hz")));
 
-	logarithmicFrequencyCheckBox = new wxCheckBox(parent, idImageControl, _T("Logarithmic Frequency Scale"));
+	logarithmicFrequencyCheckBox = new wxCheckBox(sizer->GetStaticBox(), idImageControl, _T("Logarithmic Frequency Scale"));
 	sizer->Add(logarithmicFrequencyCheckBox, wxSizerFlags().Border(wxALL, 5));
 
-	editColorMapButton = new wxButton(parent, idEditColorMap, _T("Edit Color Map"));
+	editColorMapButton = new wxButton(sizer->GetStaticBox(), idEditColorMap, _T("Edit Color Map"));
 	sizer->Add(editColorMapButton, wxSizerFlags().Border(wxALL, 5));
 
 	return sizer;
