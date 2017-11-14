@@ -28,13 +28,7 @@ AudioFile::AudioFile(const std::string& fileName) : fileName(fileName)
 {
 	av_register_all();
 	ProbeAudioFile();
-	// TODO:  Extract sound data
-}
-
-SoundData AudioFile::GetSoundData() const
-{
-	// TODO:  Implement
-	return SoundData();
+	ExtractSoundData();
 }
 
 int AudioFile::CheckStreamSpecifier(AVFormatContext* s, AVStream* st, const char* spec)
@@ -229,4 +223,9 @@ std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 	}
 
 	return "Unknown";
+}
+
+void AudioFile::ExtractSoundData()
+{
+	// TODO:  Implement
 }

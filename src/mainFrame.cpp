@@ -8,6 +8,8 @@
 #include "sonogrammerApp.h"
 #include "audioFile.h"
 #include "fft.h"
+#include "sonogramGenerator.h"
+#include "filter.h"
 
 // wxWidgets headers
 #include <wx/listctrl.h>
@@ -90,6 +92,7 @@ void MainFrame::CreateControls()
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
 	sonogramImage = new wxStaticBitmap(panel, wxID_ANY, wxBitmap());
+	sonogramImage->SetScaleMode(wxStaticBitmapBase::Scale_Fill);
 	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
 
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
@@ -320,10 +323,12 @@ void MainFrame::LoadAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
 }
 
 void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
 }
 
 void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& event)
@@ -333,30 +338,44 @@ void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& event)
 
 void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
 }
 
 void MainFrame::AddFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
+	ApplyFilters();
 }
 
 void MainFrame::RemoveFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
+	ApplyFilters();
 }
 
 void MainFrame::FilterListRightClickEvent(wxListEvent& event)
 {
+	// TODO:  Implement
 }
 
 void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& event)
 {
+	// TODO:  Implement
 }
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
 {
+	// TODO:  Implement
 }
 
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+}
+
+void MainFrame::ApplyFilters()
+{
+	filteredSoundData = originalSoundData;
+	// TODO:  implement
 }
 
 void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
@@ -420,7 +439,7 @@ void MainFrame::UpdateFFTInformation()
 {
 	resolutionSlider->SetMin(0);
 	resolutionSlider->SetMax(GetNumberOfResolutions());
-	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);// TODO:  Needs to be improved (balance of resolution and time slice)
+	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);// TODO:  Needs to be improved (balance of resolution and time slice) - could be based on available number of pixels for both directions?
 	rangeText->SetLabel(wxString::Format(_T("%0.0f Hz"), audioFile->GetSampleRate() * 0.5));
 
 	UpdateFFTCalculatedInformation();
@@ -431,12 +450,27 @@ void MainFrame::UpdateSonogramInformation()
 	timeMinText->SetValue(_T("0.0"));
 	timeMaxText->SetValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
 
-	// TODO:  What about frequency?
+	frequencyMinText->SetValue(_T("0.0"));
+	frequencyMaxText->SetValue(wxString::Format(_T("%0.0f"), std::min(8000.0, audioFile->GetSampleRate() * 0.5)));
 }
 
 void MainFrame::UpdateSonogram()
 {
-	// TODO:  Implement
+	double startTime, endTime;
+	if (!timeMinText->GetValue().ToDouble(&startTime))
+	{
+		wxMessageBox(_T("Failed to parse minimum time."));
+		return;
+	}
+
+	if (!timeMaxText->GetValue().ToDouble(&endTime))
+	{
+		wxMessageBox(_T("Failed to parse maximum time."));
+		return;
+	}
+
+	SonogramGenerator generator(filteredSoundData.ExtractSegment(startTime, endTime));
+	sonogramImage->SetBitmap(generator.GetBitmap());
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const

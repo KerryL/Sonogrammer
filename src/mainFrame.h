@@ -6,6 +6,9 @@
 #ifndef MAIN_FRAME_H_
 #define MAIN_FRAME_H_
 
+// Local headers
+#include "soundData.h"
+
 // wxWidgets headers
 #include <wx/wx.h>
 
@@ -28,6 +31,9 @@ public:
 private:
 	void CreateControls();
 	void SetProperties();
+
+	SoundData originalSoundData;
+	SoundData filteredSoundData;
 
 	wxSizer* CreatePrimaryControls(wxWindow* parent);
 	wxSizer* CreateFilterControls(wxWindow* parent);
@@ -122,6 +128,7 @@ private:
 	void UpdateFFTCalculatedInformation();
 	void UpdateSonogramInformation();
 	void UpdateSonogram();
+	void ApplyFilters();
 
 	std::unique_ptr<AudioFile> audioFile;
 
