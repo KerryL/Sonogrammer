@@ -1,14 +1,30 @@
 // File:  mainFrame.cpp
-// Created:  11/13/2017
-// Author:  K. Loux
-// Description:  Main frame for the application.
+// Date:  11/13/2017
+// Auth:  K. Loux
+// Desc:  Main frame for the application.
 
 // Local headers
 #include "mainFrame.h"
 #include "sonogrammerApp.h"
+#include "audioFile.h"
 
 // wxWidgets headers
 #include <wx/listctrl.h>
+
+// SDL headers
+#include <SDL_version.h>
+
+// FFmpeg headers
+extern "C"
+{
+#include <libavcodec/version.h>
+#include <libavformat/version.h>
+#include <libavutil/version.h>
+}
+
+// Standard C++ headers
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 MainFrame::MainFrame() : wxFrame(NULL, wxID_ANY, wxEmptyString,
 	wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE)
@@ -44,6 +60,7 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_LIST_ITEM_RIGHT_CLICK(wxID_ANY,			MainFrame::FilterListRightClickEvent)
 	EVT_LISTBOX_DCLICK(wxID_ANY,				MainFrame::FilterListDoubleClickEvent)
 	EVT_BUTTON(idEditColorMap,					MainFrame::EditColorMapButtonClickedEvent)
+	EVT_TEXT(idImageControl,					MainFrame::ImageTextCtrlChangedEvent)
 END_EVENT_TABLE();
 
 void MainFrame::CreateControls()
@@ -69,14 +86,14 @@ void MainFrame::CreateControls()
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
 	sonogramImage = new wxStaticBitmap(panel, wxID_ANY, wxBitmap());
-	rightSizer->Add(sonogramImage);
+	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
 
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
 	rightSizer->Add(rightBottomSizer);
 
-	/*rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Expand().Border(wxALL, 5));
-	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Expand().Border(wxALL, 5));
-	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Expand().Border(wxALL, 5));*/
+	rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Border(wxALL, 5));
+	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5));
+	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Border(wxALL, 5));
 
 	TransferDataToWindow();
 
@@ -129,29 +146,106 @@ wxSizer* MainFrame::CreateFilterControls(wxWindow* parent)
 
 wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 {
+	SDL_version compiledVersion;
+	SDL_version linkedVersion;
+	SDL_VERSION(&compiledVersion);
+	SDL_GetVersion(&linkedVersion);
+
 	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
 	wxString versionString;
-	versionString << SonogrammerApp::versionString << " (" << SonogrammerApp::gitHash << ")";
-	sizer->Add(new wxStaticText(parent, wxID_ANY, versionString));
+	versionString << SonogrammerApp::versionString << " (" << SonogrammerApp::gitHash << ")\n";
+	versionString << LIBAVCODEC_IDENT << '\n';
+	versionString << LIBAVFORMAT_IDENT << '\n';
+	versionString << LIBAVUTIL_IDENT << '\n';
+	versionString << "SDL v" << static_cast<int>(compiledVersion.major) << "."
+		<< static_cast<int>(compiledVersion.minor) << "."
+		<< static_cast<int>(compiledVersion.patch) << " (compiled); "
+		<< static_cast<int>(linkedVersion.major) << "."
+		<< static_cast<int>(linkedVersion.minor) << "."
+		<< static_cast<int>(linkedVersion.patch) << " (linked)";
+	wxStaticText* versionText(new wxStaticText(parent, wxID_ANY, versionString));
+	versionText->SetToolTip(_T("This software uses libraries from the FFmpeg project under the LGPLv2.1 license and libraries from the SDL project under the zlib license"));
+	sizer->Add(versionText);
 	return sizer;
 }
 
 wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 {
-	// TODO:  Complete
-	return nullptr;
+	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxBoxSizer* buttonSizer(new wxBoxSizer(wxHORIZONTAL));
+	sizer->Add(buttonSizer);
+
+	pauseButton = new wxButton(parent, idPauseButton, _T("Pause"));
+	playButton = new wxButton(parent, idPlayButton, _T("Play"));
+	includeFiltersInPlayback = new wxCheckBox(parent, idIncludeFilters, _T("Include Filters in Playback"));
+	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
+	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
+	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
+
+	sizer->AddSpacer(15);
+
+	wxFlexGridSizer* audioInfoSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
+	sizer->Add(audioInfoSizer);
+
+	audioDurationText = new wxStaticText(parent, wxID_ANY, _T(""));
+	audioSampleRateText = new wxStaticText(parent, wxID_ANY, _T(""));
+	audioChannelFormatText = new wxStaticText(parent, wxID_ANY, _T(""));
+	audioSampleFormatText = new wxStaticText(parent, wxID_ANY, _T(""));
+	audioBitRateText = new wxStaticText(parent, wxID_ANY, _T(""));
+
+	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Duration:")));
+	audioInfoSizer->Add(audioDurationText);
+	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Sample Rate:")));
+	audioInfoSizer->Add(audioSampleRateText);
+	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Channel Format:")));
+	audioInfoSizer->Add(audioChannelFormatText);
+	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Sample Format:")));
+	audioInfoSizer->Add(audioSampleFormatText);
+	audioInfoSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Bit Rate:")));
+	audioInfoSizer->Add(audioBitRateText);
+
+	return sizer;
 }
 
 wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 {
+	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
 	// TODO:  Complete
-	return nullptr;
+	return sizer;
 }
 
 wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 {
-	// TODO:  Complete
-	return nullptr;
+	wxBoxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	wxFlexGridSizer* upperSizer(new wxFlexGridSizer(4, wxSize(5,5)));
+	sizer->Add(upperSizer);
+
+	upperSizer->AddStretchSpacer();
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Min")));
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Max")));
+	upperSizer->AddStretchSpacer();
+
+	timeMinText = new wxTextCtrl(parent, idImageControl);
+	timeMaxText = new wxTextCtrl(parent, idImageControl);
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Time Range")));
+	upperSizer->Add(timeMinText);
+	upperSizer->Add(timeMaxText);
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("sec")));
+
+	frequencyMinText = new wxTextCtrl(parent, idImageControl);
+	frequencyMaxText = new wxTextCtrl(parent, idImageControl);
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Frequency Range")));
+	upperSizer->Add(frequencyMinText);
+	upperSizer->Add(frequencyMaxText);
+	upperSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Hz")));
+
+	logarithmicFrequencyCheckBox = new wxCheckBox(parent, idImageControl, _T("Logarithmic Frequency Scale"));
+	sizer->Add(logarithmicFrequencyCheckBox, wxSizerFlags().Border(wxALL, 5));
+
+	editColorMapButton = new wxButton(parent, idEditColorMap, _T("Edit Color Map"));
+	sizer->Add(editColorMapButton, wxSizerFlags().Border(wxALL, 5));
+
+	return sizer;
 }
 
 void MainFrame::SetProperties()
@@ -174,6 +268,7 @@ void MainFrame::SetProperties()
 
 void MainFrame::LoadAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	HandleNewAudioFile();
 }
 
 void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -186,6 +281,7 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& event)
 {
+	HandleNewAudioFile();
 }
 
 void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -208,6 +304,51 @@ void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& event)
 {
 }
 
+void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
+{
+}
+
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+}
+
+void MainFrame::HandleNewAudioFile()
+{
+	const wxString fileName(audioFileName->GetValue());
+	if (fileName.IsEmpty())
+		return;
+
+	if (!wxFileExists(fileName))
+	{
+		wxMessageBox(_T("File '") + fileName + _T("' does not exist."));
+		return;
+	}
+
+	audioFile = std::make_unique<AudioFile>(std::string(fileName.c_str()));
+	UpdateAudioInformation();
+}
+
+void MainFrame::UpdateAudioInformation()
+{
+	const unsigned int minutes(static_cast<unsigned int>(audioFile->GetDuration()) / 60);
+	const double seconds(audioFile->GetDuration() - minutes * 60);
+	if (minutes > 0)
+		audioDurationText->SetLabel(wxString::Format(_T("%u:%0.2f"), minutes, seconds));
+	else if (seconds > 0.0)
+		audioDurationText->SetLabel(wxString::Format(_T("%0.2f s"), seconds));
+	else
+		audioDurationText->SetLabel(wxString());
+
+	if (audioFile->GetSampleRate() > 0)
+		audioSampleRateText->SetLabel(wxString::Format(_T("%u Hz"), audioFile->GetSampleRate()));
+	else
+		audioSampleRateText->SetLabel(wxString());
+
+	audioChannelFormatText->SetLabel(audioFile->GetChannelFormat());
+	audioSampleFormatText->SetLabel(audioFile->GetSampleFormat());
+
+	if (audioFile->GetBitRate() > 0)
+		audioBitRateText->SetLabel(wxString::Format(_T("%" PRId64 " kb/s"), audioFile->GetBitRate() / 1000));
+	else
+		audioBitRateText->SetLabel(wxString());
 }
