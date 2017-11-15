@@ -116,7 +116,19 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	for (i = 0; i < numberOfSlices; ++i)
 	{
 		const double startTime(i * sliceWidth * (1.0 - parameters.overlap));
+		if (startTime >= soundData.GetDuration())
+		{
+			frequencyData[i] = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			continue;
+		}
+
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
+		if (slice.GetNumberOfPoints() < parameters.windowSize)
+		{
+			frequencyData[i] = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			continue;
+		}
+
 		if (minFrequencyIndex == 0 && maxFrequencyIndex == slice.GetNumberOfPoints() - 1)
 			frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
 		else
