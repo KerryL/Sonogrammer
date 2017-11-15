@@ -15,7 +15,6 @@ public:
 	StaticImage(wxWindow* parent, wxWindowID id, const unsigned int& width,
 		const unsigned int& height);
 	void SetImage(wxImage&& bitmap);
-	void PaintNow();
 	
 private:
 	wxImage image;

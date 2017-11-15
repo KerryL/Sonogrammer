@@ -110,6 +110,7 @@
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_lib;$(FFMPEG)/lib;$(SDL)/lib/x86</AdditionalLibraryDirectories>
       <AdditionalDependencies>wxbase31u.lib;wxmsw31u_adv.lib;wxbase31u_xml.lib;wxexpat.lib;wxmsw31u_core.lib;wxmsw31u_gl.lib;wxzlib.lib;wxpng.lib;wxtiff.lib;wxjpeg.lib;comctl32.lib;rpcrt4.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
       <Command>getGitHash .</Command>

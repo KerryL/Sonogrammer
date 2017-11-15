@@ -20,6 +20,8 @@ END_EVENT_TABLE();
 void StaticImage::SetImage(wxImage&& bitmap)
 {
 	image = std::move(bitmap);
+	width = -1;
+	height = -1;
 }
 
 void StaticImage::OnPaint(wxPaintEvent& WXUNUSED(event))
@@ -47,10 +49,4 @@ void StaticImage::Render(wxDC& dc)
 	}
 	
 	dc.DrawBitmap(resizedImage, 0, 0, false);
-}
-
-void StaticImage::PaintNow()
-{
-	wxClientDC dc(this);
-    Render(dc);
 }

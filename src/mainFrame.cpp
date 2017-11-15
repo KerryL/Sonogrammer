@@ -525,7 +525,8 @@ void MainFrame::UpdateSonogram()
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
 	sonogramImage->SetImage(generator.GetImage(colorMap));
-	// TODO:  Force a paint now
+	sonogramImage->Refresh();
+	sonogramImage->Update();
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const
