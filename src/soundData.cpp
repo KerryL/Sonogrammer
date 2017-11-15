@@ -9,6 +9,7 @@
 
 // Standard C++ headers
 #include <cassert>
+#include <algorithm>
 
 SoundData::SoundData(const double& sampleRate, const double& duration) : sampleRate(sampleRate),
 	duration(duration), data(static_cast<unsigned int>(sampleRate * duration))
@@ -26,8 +27,8 @@ SoundData::SoundData(SoundData&& sd) : sampleRate(sd.sampleRate), duration(sd.du
 std::unique_ptr<SoundData> SoundData::ExtractSegment(const double& startTime, const double& endTime) const
 {
 	assert(endTime > startTime);
-	assert(endTime <= duration);
-	const double segmentDuration(endTime - startTime);
+	//assert(endTime <= duration);// Too strict - values formatted with %f are truncated, so when we come back in here, duration could be longer out past 6th decimal place
+	const double segmentDuration(std::min(duration, endTime) - startTime);
 	auto segment(std::make_unique<SoundData>(sampleRate, segmentDuration));
 
 	// Because our data has a constant sample rate, we can calculate the indices
