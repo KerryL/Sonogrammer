@@ -3,15 +3,16 @@
 // Auth:  K. Loux
 // Desc:  Base class (abstract) for digital filters.
 
+// Local headers
+#include "filter.h"
+#include "expressionTree.h"
+
 // Standard C++ headers
 #include <cstdlib>
 #include <algorithm>
 #include <functional>
 #include <sstream>
-
-// Local headers
-#include "filter.h"
-#include "expressionTree.h"
+#include <cassert>
 
 //=============================================================================
 // Class:			Filter
@@ -31,6 +32,41 @@
 //=============================================================================
 Filter::Filter(const double &sampleRate) : sampleRate(sampleRate)
 {
+}
+
+Filter::Filter(const Filter& f) : sampleRate(f.sampleRate)
+{
+	*this = f;
+}
+
+Filter::Filter(Filter&& f) : sampleRate(f.sampleRate)
+{
+	*this = std::move(f);
+}
+
+Filter& Filter::operator=(const Filter& f)
+{
+	if (this == &f)
+		return *this;
+
+	assert(f.sampleRate == sampleRate);
+
+	return *this;
+}
+
+Filter& Filter::operator=(Filter&& f)
+{
+	if (this == &f)
+		return *this;
+
+	assert(f.sampleRate == sampleRate);
+
+	mY = std::move(f.mY);
+	mU = std::move(f.mU);
+	mA = std::move(f.mA);
+	mB = std::move(f.mB);
+
+	return *this;
 }
 
 //=============================================================================

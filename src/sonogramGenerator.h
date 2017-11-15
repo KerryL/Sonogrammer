@@ -8,6 +8,14 @@
 
 // Local headers
 #include "soundData.h"
+#include "fft.h"
+
+// wxWidgets headers
+#include <wx/colour.h>
+
+// Standard C++ headers
+#include <vector>
+#include <map>
 
 // wxWidgets forward declarations
 class wxBitmap;
@@ -15,12 +23,25 @@ class wxBitmap;
 class SonogramGenerator
 {
 public:
-	SonogramGenerator(const SoundData& soundData);
+	struct FFTParameters
+	{
+		FastFourierTransform::WindowType windowFunction;
+		unsigned int windowSize;
+		double overlap;
+	};
 
-	wxBitmap GetBitmap() const;
+	SonogramGenerator(const SoundData& soundData, const FFTParameters& parameters);
+
+	typedef std::map<double, wxColor> ColorMap;
+	wxBitmap GetBitmap(const unsigned int& width, const unsigned int& height, const ColorMap& colorMap) const;
 
 private:
 	const SoundData& soundData;
+	const FFTParameters parameters;
+
+	std::vector<std::vector<double>> frequencyData;// first index time, second index frequency
+	void ComputeFrequencyInformation();
+	std::vector<double> ComputeTimeSliceFFT(const Dataset2D& sliceData) const;
 };
 
 #endif// SONOGRAM_GENERATOR_H_

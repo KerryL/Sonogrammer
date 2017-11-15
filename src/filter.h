@@ -19,6 +19,9 @@ public:
 	/// \param sampleRate Frequency at which the digital filter is sampled.
 	explicit Filter(const double &sampleRate);
 
+	explicit Filter(const Filter& f);
+	explicit Filter(Filter&& f);
+
 	/// Constructor.
 	///
 	/// \param sampleRate   Frequency at which the digital filter is sampled.
@@ -80,6 +83,9 @@ public:
 	/// Computes the steady-state gain for this filter.
 	/// \returns the steady-state gain for this filter.
 	double ComputeSteadyStateGain() const;
+
+	Filter& operator=(const Filter& f);
+	Filter& operator=(Filter&& f);
 
 private:
 	// Filter coefficients

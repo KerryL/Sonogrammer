@@ -15,6 +15,7 @@
 // Local forward declarations
 class AudioFile;
 class SoundData;
+class Filter;
 
 // wxWidgets forward declarations
 class wxListCtrl;
@@ -71,7 +72,6 @@ private:
 	wxStaticText* rangeText;
 	wxStaticText* windowSizeText;
 	wxTextCtrl* overlapTextBox;
-	wxStaticText* numberOfAveragesText;
 
 	wxTextCtrl* timeMaxText;
 	wxTextCtrl* timeMinText;
@@ -129,6 +129,7 @@ private:
 	void ApplyFilters();
 
 	std::unique_ptr<AudioFile> audioFile;
+	std::vector<Filter> filters;
 
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;

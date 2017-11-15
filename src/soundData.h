@@ -20,13 +20,17 @@ class SoundData
 {
 public:
 	SoundData(const double& sampleRate, const double& duration);
-	SoundData(const SoundData& sd);
-	SoundData(SoundData&& sd);
+	explicit SoundData(const SoundData& sd);
+	explicit SoundData(SoundData&& sd);
 	SoundData& operator=(const SoundData& sd) = delete;
 	SoundData& operator=(SoundData&& sd) = delete;
 
 	std::unique_ptr<SoundData> ExtractSegment(const double& startTime, const double& endTime) const;
 	std::unique_ptr<SoundData> ApplyFilter(Filter& filter) const;
+
+	inline double GetSampleRate() const { return sampleRate; }
+	inline double GetDuration() const { return duration; }
+	inline Dataset2D GetData() const { return data; }
 
 private:
 	friend AudioFile;

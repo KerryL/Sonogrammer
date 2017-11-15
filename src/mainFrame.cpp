@@ -7,7 +7,6 @@
 #include "mainFrame.h"
 #include "sonogrammerApp.h"
 #include "audioFile.h"
-#include "fft.h"
 #include "sonogramGenerator.h"
 #include "filter.h"
 #include "soundData.h"
@@ -236,7 +235,6 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	rangeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	windowSizeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.0"));
-	numberOfAveragesText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Resolution (Hz)")));
 	innerSizer->Add(resolutionSlider);
@@ -258,9 +256,6 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Size")));
 	innerSizer->Add(windowSizeText);
-
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Averages")));
-	innerSizer->Add(numberOfAveragesText);
 
 	return sizer;
 }
@@ -345,12 +340,24 @@ void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 void MainFrame::AddFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	// TODO:  Implement
+	// Show dialog, get resulting filter from dialog, add it to our list and also the filter control
 	ApplyFilters();
 }
 
 void MainFrame::RemoveFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	if (filterList->GetSelectedItemCount() == 0)
+		return;
+
+	long itemIndex(-1);
+	do
+	{
+		itemIndex = filterList->GetNextItem(itemIndex, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+		assert(itemIndex >= 0);
+		filters.erase(filters.begin() + itemIndex);
+		filterList->DeleteItem(itemIndex);
+	} while (itemIndex > 1);
+
 	ApplyFilters();
 }
 
@@ -362,6 +369,7 @@ void MainFrame::FilterListRightClickEvent(wxListEvent& event)
 void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& event)
 {
 	// TODO:  Implement
+	// Edit the selected filter
 }
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
@@ -371,12 +379,14 @@ void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
 
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	// TODO:  Implement
 }
 
 void MainFrame::ApplyFilters()
 {
 	filteredSoundData = std::make_unique<SoundData>(*originalSoundData);
-	// TODO:  implement
+	for (auto& f : filters)
+		filteredSoundData = filteredSoundData->ApplyFilter(f);
 }
 
 void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
@@ -388,7 +398,6 @@ void MainFrame::UpdateFFTCalculatedInformation()
 {
 	resolutionText->SetLabel(wxString::Format(_T("%f Hz"), GetResolution()));
 	windowSizeText->SetLabel(wxString::Format(_T("%d"), GetWindowSize()));
-	//wxStaticText* numberOfAveragesText;
 	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
 }
 
@@ -470,13 +479,52 @@ void MainFrame::UpdateSonogram()
 		return;
 	}
 
-	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime));
-	sonogramImage->SetBitmap(generator.GetBitmap());
+	SonogramGenerator::FFTParameters parameters;
+	parameters.windowFunction = static_cast<FastFourierTransform::WindowType>(windowComboBox->GetSelection());
+	parameters.windowSize = GetWindowSize();
+
+	if (overlapTextBox->GetValue().ToDouble(&parameters.overlap))
+	{
+		wxMessageBox(_T("Failed to parse overlap."));
+		return;
+	}
+	else if (parameters.overlap < 0.0 || parameters.overlap > 1.0)
+	{
+		wxMessageBox(_T("Overlap must be between 0 and 1."));
+		return;
+	}
+
+	SonogramGenerator::ColorMap colorMap;// TODO:  Don't hardcode
+	colorMap[0.0] = wxColor(0, 0, 0);
+	colorMap[1.0] = wxColor(255, 255, 255);
+
+	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
+	sonogramImage->SetBitmap(generator.GetBitmap(400, 150, colorMap));// TODO:  Don't hardcode size
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const
 {
-	const unsigned int numberOfPoints(audioFile->GetDuration() * audioFile->GetSampleRate());
+	double startTime, endTime;
+	if (!timeMinText->GetValue().ToDouble(&startTime))
+	{
+		wxMessageBox(_T("Failed to parse minimum time."));
+		return 0;
+	}
+
+	if (!timeMaxText->GetValue().ToDouble(&endTime))
+	{
+		wxMessageBox(_T("Failed to parse minimum time."));
+		return 0;
+	}
+
+	const double currentDuration(endTime - startTime);
+	if (currentDuration <= 0.0)
+	{
+		wxMessageBox(_T("Invalid segment duration."));
+		return 0;
+	}
+
+	const unsigned int numberOfPoints(currentDuration * audioFile->GetSampleRate());
 	return FastFourierTransform::GetMaxPowerOfTwo(numberOfPoints) - 1;
 }
 

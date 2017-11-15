@@ -26,17 +26,21 @@ SoundData::SoundData(SoundData&& sd) : sampleRate(sd.sampleRate), duration(sd.du
 std::unique_ptr<SoundData> SoundData::ExtractSegment(const double& startTime, const double& endTime) const
 {
 	assert(endTime > startTime);
+	assert(endTime <= duration);
 	const double segmentDuration(endTime - startTime);
 	auto segment(std::make_unique<SoundData>(sampleRate, segmentDuration));
 
 	// Because our data has a constant sample rate, we can calculate the indices
-	typedef std::vector<double>::size_type DataSizeType;
-	const DataSizeType firstGoodIndex(static_cast<DataSizeType>(startTime * sampleRate));
-	const DataSizeType newPointCount(static_cast<DataSizeType>(segmentDuration * sampleRate));
-	segment->data.GetX().erase(segment->data.GetX().begin(), segment->data.GetX().begin() + firstGoodIndex);
-	segment->data.GetY().erase(segment->data.GetY().begin(), segment->data.GetY().begin() + firstGoodIndex);
-	segment->data.GetX().erase(segment->data.GetX().begin() + newPointCount, segment->data.GetX().end());
-	segment->data.GetY().erase(segment->data.GetY().begin() + newPointCount, segment->data.GetY().end());
+	const auto firstGoodIndex(static_cast<std::vector<double>::size_type>(startTime * sampleRate));
+	const auto newPointCount(static_cast<std::vector<double>::size_type>(segmentDuration * sampleRate));
+
+	const auto firstX(data.GetX().begin() + firstGoodIndex);
+	const auto lastX(firstX + newPointCount);
+	const auto firstY(data.GetY().begin() + firstGoodIndex);
+	const auto lastY(firstY + newPointCount);
+
+	segment->data.GetX() = std::vector<double>(firstX, lastX);
+	segment->data.GetY() = std::vector<double>(firstY, lastY);
 
 	return segment;
 }
