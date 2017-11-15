@@ -415,8 +415,10 @@ void MainFrame::HandleNewAudioFile()
 
 	audioFile = std::make_unique<AudioFile>(std::string(fileName.c_str()));
 	UpdateAudioInformation();
-	UpdateFFTInformation();
 	UpdateSonogramInformation();
+	UpdateFFTInformation();
+	originalSoundData = std::make_unique<SoundData>(audioFile->GetSoundData());
+	ApplyFilters();
 	UpdateSonogram();
 }
 
@@ -483,7 +485,7 @@ void MainFrame::UpdateSonogram()
 	parameters.windowFunction = static_cast<FastFourierTransform::WindowType>(windowComboBox->GetSelection());
 	parameters.windowSize = GetWindowSize();
 
-	if (overlapTextBox->GetValue().ToDouble(&parameters.overlap))
+	if (!overlapTextBox->GetValue().ToDouble(&parameters.overlap))
 	{
 		wxMessageBox(_T("Failed to parse overlap."));
 		return;
@@ -495,11 +497,11 @@ void MainFrame::UpdateSonogram()
 	}
 
 	SonogramGenerator::ColorMap colorMap;// TODO:  Don't hardcode
-	colorMap[0.0] = wxColor(0, 0, 0);
-	colorMap[1.0] = wxColor(255, 255, 255);
+	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(0, 0, 0)));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(255, 255, 255)));
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
-	sonogramImage->SetBitmap(generator.GetBitmap(400, 150, colorMap));// TODO:  Don't hardcode size
+	sonogramImage->SetBitmap(generator.GetBitmap(colorMap));
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const

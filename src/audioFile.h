@@ -37,7 +37,7 @@ class AudioFile
 public:
 	explicit AudioFile(const std::string& fileName);
 
-	std::unique_ptr<SoundData> GetSoundData(const double& startTime, const double& endTime) const { return data->ExtractSegment(startTime, endTime); }
+	SoundData& GetSoundData() const { return *data; }
 
 	inline double GetDuration() const { return fileInfo.duration; }
 	inline int64_t GetBitRate() const { return fileInfo.bitRate; }
