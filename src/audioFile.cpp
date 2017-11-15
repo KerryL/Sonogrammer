@@ -6,6 +6,9 @@
 // Local headers
 #include "audioFile.h"
 #include "soundData.h"
+#include "libCallWrapper.h"
+#include "audioUtilities.h"
+#include "resampler.h"
 
 // FFmpeg headers
 extern "C"
@@ -23,6 +26,9 @@ extern "C"
 #pragma warning(pop)
 #endif
 }
+
+// Standard C++ headers
+#include <algorithm>
 
 AudioFile::AudioFile(const std::string& fileName) : fileName(fileName)
 {
@@ -228,5 +234,196 @@ std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 void AudioFile::ExtractSoundData()
 {
 	data = std::make_unique<SoundData>(fileInfo.sampleRate, fileInfo.duration);
-	// TODO:  Implement
+
+	AVFormatContext* formatContext(nullptr);
+	AVCodecContext* codecContext(nullptr);
+	if (!OpenAudioFile(formatContext, codecContext))
+	{
+		// TODO:  Message
+	}
+
+	Resampler resampler;
+	if (!CreateResampler(*codecContext, resampler))
+	{
+		// TODO:  Message
+	}
+
+	if (!ReadAudioFile(*formatContext, *codecContext, resampler))
+	{
+		// TODO:  Message
+	}
+
+	avcodec_free_context(&codecContext);
+	avformat_close_input(&formatContext);
+}
+
+bool AudioFile::OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& codecContext)
+{
+	if (LibCallWrapper::FFmpegErrorCheck(avformat_open_input(&formatContext,
+		fileName.c_str(), nullptr, nullptr), "Failed to open audio file"))
+		return false;
+
+	if (LibCallWrapper::FFmpegErrorCheck(avformat_find_stream_info(formatContext, nullptr),
+		"Failed to get stream information"))
+		return false;
+
+	/*if (formatContext->nb_streams != 1)
+	{
+		outStream << "Expected one input stream, but found " << formatContext->nb_streams << std::endl;
+		return false;
+	}*/
+
+	if (!CreateCodecContext(*formatContext, codecContext))
+		return false;
+
+	return true;
+}
+
+bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContext*& codecContext)
+{
+	AVCodec* codec;
+	codec = avcodec_find_decoder(formatContext.streams[0]->codecpar->codec_id);
+	if (!codec)
+	{
+		// TODO:  Message
+		//outStream << "Failed to find codec" << std::endl;
+		return false;
+	}
+
+	codecContext = avcodec_alloc_context3(codec);
+	if (!codecContext)
+	{
+		// TODO:  Message
+		//outStream << "Failed to allocate codec context" << std::endl;
+		return false;
+	}
+
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_to_context(codecContext,
+		formatContext.streams[0]->codecpar), "Failed to convert parameters to context"))
+		return false;
+
+	codecContext->channel_layout = AudioUtilities::GetChannelLayoutFromCount(codecContext->channels);
+	codecContext->frame_size = 1024;// Is this OK?  TODO
+
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(codecContext, codec, nullptr),
+		"Failed to open codec"))
+		return false;
+
+	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(codecContext, "refcounted_frames", 1, 0),
+		"Failed to set decoder context to reference count"))
+		return false;
+
+	return true;
+}
+
+bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& resampler)
+{
+	if (!resampler.Initialize(codecContext.sample_rate, codecContext.channel_layout, codecContext.sample_fmt,
+		codecContext.sample_rate, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_FLTP))
+		return false;
+
+	return true;
+}
+
+bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& codecContext, Resampler& resampler)
+{
+	AVFrame* frame(av_frame_alloc());
+	if (!frame)
+	{
+		// TODO:  Message
+		//outStream << "Failed to allocate frame buffer" << std::endl;
+		return false;
+	}
+
+	AVPacket packet;
+	av_init_packet(&packet);
+
+	if (LibCallWrapper::FFmpegErrorCheck(av_read_frame(&formatContext, &packet),
+		"Failed to read first packet from file"))
+	{
+		av_frame_free(&frame);
+		return false;
+	}
+
+	dataInsertionPoint = 0;
+	std::generate(data->data.GetX().begin(), data->data.GetX().end(), [n = 0, this]() mutable
+	{
+		return n++ / fileInfo.sampleRate;
+	});
+
+	bool flushed(false);
+	while (packet.size > 0 || !flushed)
+	{
+		if (packet.size > 0)
+		{
+			if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, &packet),
+				"Error sending packet from file to decoder"))
+			{
+				av_frame_free(&frame);
+				return false;
+			}
+		}
+		else if (!flushed)
+		{
+			if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, nullptr),
+				"Error flushing decoder"))
+			{
+				av_frame_free(&frame);
+				return false;
+			}
+			flushed = true;
+		}
+
+		int returnCode;
+		bool gotAFrame(false);
+		do
+		{
+			returnCode = avcodec_receive_frame(&codecContext, frame);
+			if (returnCode == 0)
+			{
+				AVFrame *resampledFrame(resampler.Resample(frame));
+				if (resampledFrame)
+					AppendFrame(*resampledFrame);
+
+				if (resampler.NeedsSecondResample())
+				{
+					resampledFrame = resampler.Resample(nullptr);
+					if (resampledFrame)
+						AppendFrame(*resampledFrame);
+				}
+			}
+			else if (returnCode != AVERROR(EAGAIN) && !gotAFrame && returnCode != AVERROR_EOF)
+			{
+				LibCallWrapper::FFmpegErrorCheck(returnCode,
+					"Error receiving file frame from decoder");
+			}
+		} while (returnCode == 0);
+
+		if (!flushed)
+		{
+			returnCode = av_read_frame(&formatContext, &packet);
+			if (returnCode != AVERROR_EOF)
+			{
+				if (LibCallWrapper::FFmpegErrorCheck(returnCode,
+					"Failed to read packet from file"))
+				{
+					av_frame_free(&frame);
+					return false;
+				}
+			}
+			else
+				packet.size = 0;
+		}
+	}
+
+	av_frame_free(&frame);
+	return true;
+}
+
+void AudioFile::AppendFrame(const AVFrame& frame)
+{
+	const float* floatData(reinterpret_cast<float*>(frame.data[0]));// Because we resampled to FLTP
+	std::copy(floatData, floatData + frame.linesize[0] / sizeof(float),
+		data->data.GetY().begin() + dataInsertionPoint);
+	dataInsertionPoint += frame.nb_samples;
 }

@@ -79,7 +79,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_dll;$(FFMPEG)/lib;$(SDL)/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wxbase31ud.lib;wxmsw31ud_adv.lib;wxbase31ud_xml.lib;wxmsw31ud_core.lib;wxmsw31ud_gl.lib;wxzlibd.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxbase31ud.lib;wxmsw31ud_adv.lib;wxbase31ud_xml.lib;wxmsw31ud_core.lib;wxmsw31ud_gl.lib;wxzlibd.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
     <PreBuildEvent>
@@ -108,7 +108,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_lib;$(FFMPEG)/lib;$(SDL)/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wxbase31u.lib;wxmsw31u_adv.lib;wxbase31u_xml.lib;wxexpat.lib;wxmsw31u_core.lib;wxmsw31u_gl.lib;wxzlib.lib;wxpng.lib;wxtiff.lib;wxjpeg.lib;comctl32.lib;rpcrt4.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxbase31u.lib;wxmsw31u_adv.lib;wxbase31u_xml.lib;wxexpat.lib;wxmsw31u_core.lib;wxmsw31u_gl.lib;wxzlib.lib;wxpng.lib;wxtiff.lib;wxjpeg.lib;comctl32.lib;rpcrt4.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
     </Link>
     <PreBuildEvent>
@@ -130,23 +130,29 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\audioFile.cpp" />
+    <ClCompile Include="src\audioUtilities.cpp" />
     <ClCompile Include="src\dataset2D.cpp" />
     <ClCompile Include="src\expressionTree.cpp" />
     <ClCompile Include="src\fft.cpp" />
     <ClCompile Include="src\filter.cpp" />
     <ClCompile Include="src\gitHash.cpp" />
+    <ClCompile Include="src\libCallWrapper.cpp" />
     <ClCompile Include="src\mainFrame.cpp" />
+    <ClCompile Include="src\resampler.cpp" />
     <ClCompile Include="src\sonogramGenerator.cpp" />
     <ClCompile Include="src\sonogrammerApp.cpp" />
     <ClCompile Include="src\soundData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\audioFile.h" />
+    <ClInclude Include="src\audioUtilities.h" />
     <ClInclude Include="src\dataset2D.h" />
     <ClInclude Include="src\expressionTree.h" />
     <ClInclude Include="src\fft.h" />
     <ClInclude Include="src\filter.h" />
+    <ClInclude Include="src\libCallWrapper.h" />
     <ClInclude Include="src\mainFrame.h" />
+    <ClInclude Include="src\resampler.h" />
     <ClInclude Include="src\sonogramGenerator.h" />
     <ClInclude Include="src\sonogrammerApp.h" />
     <ClInclude Include="src\soundData.h" />

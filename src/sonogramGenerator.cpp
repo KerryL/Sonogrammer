@@ -40,23 +40,32 @@ wxBitmap SonogramGenerator::GetBitmap(const ColorMap& colorMap) const
 	return sonogram;
 }
 
-wxColor SonogramGenerator::GetColorFromMap(const double& magnitude, const ColorMap& colorMap)
+wxColor SonogramGenerator::GetColorFromMap(const double& magnitude, const ColorMap& colorMap) const
 {
-	wxColor lowerColor, upperColor;
+	const double scaledMagnitude(GetScaledMagnitude(magnitude));
+	MagnitudeColor lower, upper;
 	bool foundLower(false);
 	for (const auto& c : colorMap)
 	{
-		if (!foundLower && magnitude >= c.magnitude)
+		if (!foundLower && scaledMagnitude >= c.magnitude)
 		{
-			lowerColor = c.color;
+			lower = c;
 			foundLower = true;
 		}
 		else if (foundLower)
 		{
-			upperColor = c.color;
+			upper = c;
 			break;
 		}
 	}
+
+	return GetInterpolatedColor(lower.color, lower.magnitude, upper.color, upper.magnitude, scaledMagnitude);
+}
+
+wxColor SonogramGenerator::GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
+	const wxColor& upperColor, const double& upperValue, const double& value)
+{
+	assert(value >= lowerValue && value <= upperValue);
 
 	double lowerH, lowerS, lowerV;
 	GetHSV(lowerColor, lowerH, lowerS, lowerV);
@@ -68,11 +77,25 @@ wxColor SonogramGenerator::GetColorFromMap(const double& magnitude, const ColorM
 	const double maxHue(std::max(lowerH, upperH));
 	double resultHue;
 	if (minHue + 1.0 - maxHue < maxHue - minHue)
-		resultHue = 0.5 * (minHue + 1.0 + maxHue);
+	{
+		resultHue = minHue + (maxHue - (minHue + 1.0)) * value / (upperValue - lowerValue);
+		if (resultHue < 0.0)
+			resultHue += 1.0;
+	}
 	else
-		resultHue = 0.5 * (maxHue + minHue);
+		resultHue = minHue + (maxHue - minHue) * value / (upperValue - lowerValue);
 
-	return ColorFromHSV(resultHue, 0.5 * (lowerS + upperS), 0.5 * (lowerV + upperV));
+	return ColorFromHSV(resultHue,
+		lowerS + (upperS - lowerS) * value / (upperValue - lowerValue),
+		lowerV + (upperV - lowerV) * value / (upperValue - lowerValue));
+}
+
+double SonogramGenerator::GetScaledMagnitude(const double& magnitude) const
+{
+	assert(maxMagnitude >= minMagnitude);
+	if (maxMagnitude == minMagnitude)
+		return 0.0;
+	return (magnitude - minMagnitude) / (maxMagnitude - minMagnitude);
 }
 
 void SonogramGenerator::ComputeFrequencyInformation()
@@ -81,12 +104,23 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	const unsigned int numberOfSlices((1.0 + parameters.overlap) * soundData.GetDuration() * soundData.GetSampleRate() / parameters.windowSize);
 	frequencyData.resize(numberOfSlices);
 
+	minMagnitude = std::numeric_limits<double>::max();
+	maxMagnitude = 0.0;
+
 	unsigned int i;
 	for (i = 0; i < numberOfSlices; ++i)
 	{
 		const double startTime(i * sliceWidth * (1.0 - parameters.overlap));
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
 		frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
+
+		const double maxElement(*std::max_element(frequencyData[i].begin(), frequencyData[i].end()));
+		if (maxElement > maxMagnitude)
+			maxMagnitude = maxElement;
+
+		const double minElement(*std::min_element(frequencyData[i].begin(), frequencyData[i].end()));
+		if (minElement < minMagnitude)
+			minMagnitude = minElement;
 	}
 }
 

@@ -23,6 +23,7 @@ extern "C"
 #include <libavcodec/version.h>
 #include <libavformat/version.h>
 #include <libavutil/version.h>
+#include <libswresample/version.h>
 }
 
 // Standard C++ headers
@@ -92,6 +93,7 @@ void MainFrame::CreateControls()
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
 	sonogramImage = new wxStaticBitmap(panel, wxID_ANY, wxBitmap());
+	sonogramImage->SetMinSize(wxSize(400, 150));
 	sonogramImage->SetScaleMode(wxStaticBitmapBase::Scale_Fill);
 	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
 
@@ -163,6 +165,7 @@ wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 	versionString << LIBAVCODEC_IDENT << '\n';
 	versionString << LIBAVFORMAT_IDENT << '\n';
 	versionString << LIBAVUTIL_IDENT << '\n';
+	versionString << LIBSWRESAMPLE_IDENT << '\n';
 	versionString << "SDL v" << static_cast<int>(compiledVersion.major) << "."
 		<< static_cast<int>(compiledVersion.minor) << "."
 		<< static_cast<int>(compiledVersion.patch) << " (compiled); "
@@ -374,7 +377,8 @@ void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& event)
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
 {
-	// TODO:  Implement
+	ApplyFilters();
+	UpdateSonogram();
 }
 
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -384,6 +388,9 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::ApplyFilters()
 {
+	if (!originalSoundData)
+		return;
+
 	filteredSoundData = std::make_unique<SoundData>(*originalSoundData);
 	for (auto& f : filters)
 		filteredSoundData = filteredSoundData->ApplyFilter(f);
@@ -392,6 +399,8 @@ void MainFrame::ApplyFilters()
 void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	UpdateFFTCalculatedInformation();
+	ApplyFilters();
+	UpdateSonogram();
 }
 
 void MainFrame::UpdateFFTCalculatedInformation()
@@ -468,6 +477,9 @@ void MainFrame::UpdateSonogramInformation()
 
 void MainFrame::UpdateSonogram()
 {
+	if (!filteredSoundData)
+		return;
+
 	double startTime, endTime;
 	if (!timeMinText->GetValue().ToDouble(&startTime))
 	{
@@ -497,8 +509,8 @@ void MainFrame::UpdateSonogram()
 	}
 
 	SonogramGenerator::ColorMap colorMap;// TODO:  Don't hardcode
-	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(0, 0, 0)));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(255, 255, 255)));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
 	sonogramImage->SetBitmap(generator.GetBitmap(colorMap));

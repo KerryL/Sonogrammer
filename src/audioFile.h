@@ -28,8 +28,12 @@ extern "C"
 #include <string>
 #include <memory>
 
+// Local forward declarations
+class Resampler;
+
 // FFmpeg forward declarations
 struct AVFormatContext;
+struct AVCodecContext;
 struct AVStream;
 
 class AudioFile
@@ -50,6 +54,7 @@ private:
 
 	void ExtractSoundData();
 	std::unique_ptr<SoundData> data;
+	unsigned int dataInsertionPoint;
 
 	struct AudioFileInformation
 	{
@@ -71,6 +76,13 @@ private:
 	static int CheckStreamSpecifier(AVFormatContext* s, AVStream* st, const char* spec);
 	static AVDictionary *FilterCodecOptions(AVDictionary* opts, AVCodecID codec_id,
 		AVFormatContext* s, AVStream* st, AVCodec* codec);
+
+	bool OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& codecContext);
+	bool CreateCodecContext(AVFormatContext& formatContext, AVCodecContext*& codecContext);
+	bool CreateResampler(const AVCodecContext& codecContext, Resampler& resampler);
+	bool ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& codecContext, Resampler& resampler);
+
+	void AppendFrame(const AVFrame& frame);
 };
 
 #endif// AUDIO_FILE_H_
