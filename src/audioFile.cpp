@@ -153,6 +153,8 @@ void AudioFile::ProbeAudioFile()
 		return;
 	}
 
+	streamIndex = -1;
+
 	unsigned int i;
 	for (i = 0; i < formatContext->nb_streams; ++i)
         av_dict_free(&options[i]);
@@ -169,6 +171,7 @@ void AudioFile::ProbeAudioFile()
 		fileInfo.channelFormat = GetChannelFormatString(s->codecpar->channel_layout);
 		fileInfo.bitRate = s->codecpar->bit_rate;
 		fileInfo.sampleFormat = GetSampleFormatString(static_cast<AVSampleFormat>(s->codecpar->format));
+		streamIndex = i;
 		break;
 	}
 
@@ -267,11 +270,11 @@ bool AudioFile::OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& 
 		"Failed to get stream information"))
 		return false;
 
-	/*if (formatContext->nb_streams != 1)
+	if (streamIndex < 0)
 	{
-		outStream << "Expected one input stream, but found " << formatContext->nb_streams << std::endl;
+		//outStream << "Failed to find audio stream" << std::endl;
 		return false;
-	}*/
+	}
 
 	if (!CreateCodecContext(*formatContext, codecContext))
 		return false;
@@ -282,7 +285,7 @@ bool AudioFile::OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& 
 bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContext*& codecContext)
 {
 	AVCodec* codec;
-	codec = avcodec_find_decoder(formatContext.streams[0]->codecpar->codec_id);
+	codec = avcodec_find_decoder(formatContext.streams[streamIndex]->codecpar->codec_id);
 	if (!codec)
 	{
 		// TODO:  Message
@@ -299,7 +302,7 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 	}
 
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_to_context(codecContext,
-		formatContext.streams[0]->codecpar), "Failed to convert parameters to context"))
+		formatContext.streams[streamIndex]->codecpar), "Failed to convert parameters to context"))
 		return false;
 
 	codecContext->channel_layout = AudioUtilities::GetChannelLayoutFromCount(codecContext->channels);

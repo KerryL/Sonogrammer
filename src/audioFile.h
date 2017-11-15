@@ -68,6 +68,8 @@ private:
 	AudioFileInformation fileInfo;
 
 	void ProbeAudioFile();
+	int streamIndex;
+
 	static std::string GetChannelFormatString(const uint64_t& layout);
 	static std::string GetSampleFormatString(const AVSampleFormat& format);
 
