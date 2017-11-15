@@ -30,7 +30,7 @@ wxBitmap SonogramGenerator::GetBitmap(const ColorMap& colorMap) const
 		{
 			const wxColor c(GetColorFromMap(frequencyData[w][h], colorMap));
 			wxNativePixelData::Iterator p(pixels);
-			p.Offset(pixels, w, sonogram.GetHeight() - h);
+			p.Offset(pixels, w, sonogram.GetHeight() - h - 1);
 			p.Red() = c.Red();
 			p.Green() = c.Green();
 			p.Blue() = c.Blue();
@@ -77,7 +77,7 @@ wxColor SonogramGenerator::GetColorFromMap(const double& magnitude, const ColorM
 
 void SonogramGenerator::ComputeFrequencyInformation()
 {
-	const double sliceWidth(parameters.windowSize * soundData.GetSampleRate());// [sec]
+	const double sliceWidth((parameters.windowSize + 1) / soundData.GetSampleRate());// [sec]
 	const unsigned int numberOfSlices((1.0 + parameters.overlap) * soundData.GetDuration() * soundData.GetSampleRate() / parameters.windowSize);
 	frequencyData.resize(numberOfSlices);
 
@@ -86,7 +86,7 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	{
 		const double startTime(i * sliceWidth * (1.0 - parameters.overlap));
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
-		frequencyData[i] = ComputeTimeSliceFFT(slice);
+		frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
 	}
 }
 
