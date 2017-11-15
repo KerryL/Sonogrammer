@@ -142,6 +142,7 @@
     <ClCompile Include="src\sonogramGenerator.cpp" />
     <ClCompile Include="src\sonogrammerApp.cpp" />
     <ClCompile Include="src\soundData.cpp" />
+    <ClCompile Include="src\staticImage.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\audioFile.h" />
@@ -156,6 +157,7 @@
     <ClInclude Include="src\sonogramGenerator.h" />
     <ClInclude Include="src\sonogrammerApp.h" />
     <ClInclude Include="src\soundData.h" />
+    <ClInclude Include="src\staticImage.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

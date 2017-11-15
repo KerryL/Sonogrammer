@@ -18,7 +18,7 @@
 #include <set>
 
 // wxWidgets forward declarations
-class wxBitmap;
+class wxImage;
 
 class SonogramGenerator
 {
@@ -28,6 +28,8 @@ public:
 		FastFourierTransform::WindowType windowFunction;
 		unsigned int windowSize;
 		double overlap;
+		double minFrequency;
+		double maxFrequency;
 	};
 
 	SonogramGenerator(const SoundData& soundData, const FFTParameters& parameters);
@@ -45,7 +47,7 @@ public:
 	};
 
 	typedef std::set<MagnitudeColor> ColorMap;
-	wxBitmap GetBitmap(const ColorMap& colorMap) const;
+	wxImage GetImage(const ColorMap& colorMap) const;
 
 private:
 	const SoundData& soundData;

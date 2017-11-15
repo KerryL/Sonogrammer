@@ -17,11 +17,11 @@ SonogramGenerator::SonogramGenerator(const SoundData& soundData,
 	ComputeFrequencyInformation();
 }
 
-wxBitmap SonogramGenerator::GetBitmap(const ColorMap& colorMap) const
+wxImage SonogramGenerator::GetImage(const ColorMap& colorMap) const
 {
 	const unsigned int colorDepth(24);
-	wxBitmap sonogram(frequencyData.size(), frequencyData.front().size(), colorDepth);
-	wxNativePixelData pixels(sonogram);
+	wxImage sonogram(frequencyData.size(), frequencyData.front().size(), colorDepth);
+	wxImagePixelData pixels(sonogram);
 	int w;
 	for (w = 0; w < sonogram.GetWidth(); ++w)
 	{
@@ -29,7 +29,7 @@ wxBitmap SonogramGenerator::GetBitmap(const ColorMap& colorMap) const
 		for (h = 0; h < sonogram.GetHeight(); ++h)
 		{
 			const wxColor c(GetColorFromMap(frequencyData[w][h], colorMap));
-			wxNativePixelData::Iterator p(pixels);
+			wxImagePixelData::Iterator p(pixels);
 			p.Offset(pixels, w, sonogram.GetHeight() - h - 1);
 			p.Red() = c.Red();
 			p.Green() = c.Green();
@@ -107,12 +107,23 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	minMagnitude = std::numeric_limits<double>::max();
 	maxMagnitude = 0.0;
 
+	const double resolution(soundData.GetSampleRate() / parameters.windowSize);// [Hz]
+	const unsigned int minFrequencyIndex(parameters.minFrequency / resolution);
+	const unsigned int maxFrequencyIndex(parameters.maxFrequency / resolution);
+	assert(maxFrequencyIndex > minFrequencyIndex);
+
 	unsigned int i;
 	for (i = 0; i < numberOfSlices; ++i)
 	{
 		const double startTime(i * sliceWidth * (1.0 - parameters.overlap));
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
-		frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
+		if (minFrequencyIndex == 0 && maxFrequencyIndex == slice.GetNumberOfPoints() - 1)
+			frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
+		else
+		{
+			auto fftData(std::move(ComputeTimeSliceFFT(slice)));
+			frequencyData[i] = std::vector<double>(fftData.begin() + minFrequencyIndex, fftData.begin() + maxFrequencyIndex);
+		}
 
 		const double maxElement(*std::max_element(frequencyData[i].begin(), frequencyData[i].end()));
 		if (maxElement > maxMagnitude)

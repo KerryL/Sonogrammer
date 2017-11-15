@@ -16,6 +16,7 @@
 class AudioFile;
 class SoundData;
 class Filter;
+class StaticImage;
 
 // wxWidgets forward declarations
 class wxListCtrl;
@@ -42,7 +43,7 @@ private:
 	wxSizer* CreateImageControls(wxWindow* parent);
 
 	// Controls
-	wxStaticBitmap* sonogramImage;
+	StaticImage* sonogramImage;
 
 	wxTextCtrl* audioFileName;
 	wxTextCtrl* sonogramConfigFileName;

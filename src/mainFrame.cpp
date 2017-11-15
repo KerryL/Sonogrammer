@@ -10,6 +10,7 @@
 #include "sonogramGenerator.h"
 #include "filter.h"
 #include "soundData.h"
+#include "staticImage.h"
 
 // wxWidgets headers
 #include <wx/listctrl.h>
@@ -92,9 +93,7 @@ void MainFrame::CreateControls()
 	wxBoxSizer* rightSizer(new wxBoxSizer(wxVERTICAL));
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
-	sonogramImage = new wxStaticBitmap(panel, wxID_ANY, wxBitmap());
-	sonogramImage->SetMinSize(wxSize(400, 150));
-	sonogramImage->SetScaleMode(wxStaticBitmapBase::Scale_Fill);
+	sonogramImage = new StaticImage(panel, wxID_ANY, 600, 200);
 	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
 
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
@@ -508,12 +507,25 @@ void MainFrame::UpdateSonogram()
 		return;
 	}
 
+	if (!frequencyMinText->GetValue().ToDouble(&parameters.minFrequency))
+	{
+		wxMessageBox(_T("Failed to parse minimum frequency."));
+		return;
+	}
+
+	if (!frequencyMaxText->GetValue().ToDouble(&parameters.maxFrequency))
+	{
+		wxMessageBox(_T("Failed to parse maximum frequency."));
+		return;
+	}
+
 	SonogramGenerator::ColorMap colorMap;// TODO:  Don't hardcode
 	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
 	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
-	sonogramImage->SetBitmap(generator.GetBitmap(colorMap));
+	sonogramImage->SetImage(generator.GetImage(colorMap));
+	// TODO:  Force a paint now
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const
