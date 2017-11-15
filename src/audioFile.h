@@ -9,9 +9,6 @@
 // Local headers
 #include "soundData.h"
 
-// Standard C++ headers
-#include <string>
-
 // FFmpeg headers
 extern "C"
 {
@@ -27,6 +24,10 @@ extern "C"
 #endif
 }
 
+// Standard C++ headers
+#include <string>
+#include <memory>
+
 // FFmpeg forward declarations
 struct AVFormatContext;
 struct AVStream;
@@ -36,7 +37,7 @@ class AudioFile
 public:
 	explicit AudioFile(const std::string& fileName);
 
-	SoundData GetSoundData(const double& startTime, const double& endTime) const { return data.ExtractSegment(startTime, endTime); }
+	std::unique_ptr<SoundData> GetSoundData(const double& startTime, const double& endTime) const { return data->ExtractSegment(startTime, endTime); }
 
 	inline double GetDuration() const { return fileInfo.duration; }
 	inline int64_t GetBitRate() const { return fileInfo.bitRate; }
@@ -48,7 +49,7 @@ private:
 	const std::string fileName;
 
 	void ExtractSoundData();
-	SoundData data;
+	std::unique_ptr<SoundData> data;
 
 	struct AudioFileInformation
 	{

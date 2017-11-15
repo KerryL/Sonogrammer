@@ -6,9 +6,6 @@
 #ifndef MAIN_FRAME_H_
 #define MAIN_FRAME_H_
 
-// Local headers
-#include "soundData.h"
-
 // wxWidgets headers
 #include <wx/wx.h>
 
@@ -17,6 +14,7 @@
 
 // Local forward declarations
 class AudioFile;
+class SoundData;
 
 // wxWidgets forward declarations
 class wxListCtrl;
@@ -32,8 +30,8 @@ private:
 	void CreateControls();
 	void SetProperties();
 
-	SoundData originalSoundData;
-	SoundData filteredSoundData;
+	std::unique_ptr<SoundData> originalSoundData;
+	std::unique_ptr<SoundData> filteredSoundData;
 
 	wxSizer* CreatePrimaryControls(wxWindow* parent);
 	wxSizer* CreateFilterControls(wxWindow* parent);

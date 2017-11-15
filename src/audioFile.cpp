@@ -227,5 +227,6 @@ std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 
 void AudioFile::ExtractSoundData()
 {
+	data = std::make_unique<SoundData>(fileInfo.sampleRate, fileInfo.duration);
 	// TODO:  Implement
 }

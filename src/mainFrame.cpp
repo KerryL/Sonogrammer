@@ -10,6 +10,7 @@
 #include "fft.h"
 #include "sonogramGenerator.h"
 #include "filter.h"
+#include "soundData.h"
 
 // wxWidgets headers
 #include <wx/listctrl.h>
@@ -374,7 +375,7 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::ApplyFilters()
 {
-	filteredSoundData = originalSoundData;
+	filteredSoundData = std::make_unique<SoundData>(*originalSoundData);
 	// TODO:  implement
 }
 
@@ -469,7 +470,7 @@ void MainFrame::UpdateSonogram()
 		return;
 	}
 
-	SonogramGenerator generator(filteredSoundData.ExtractSegment(startTime, endTime));
+	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime));
 	sonogramImage->SetBitmap(generator.GetBitmap());
 }
 
