@@ -6,6 +6,9 @@
 #ifndef MAIN_FRAME_H_
 #define MAIN_FRAME_H_
 
+// Local headers
+#include "sonogramGenerator.h"
+
 // wxWidgets headers
 #include <wx/wx.h>
 
@@ -133,6 +136,8 @@ private:
 	std::vector<Filter> filters;
 	std::vector<FilterParameters> filterParameters;
 
+	SonogramGenerator::ColorMap colorMap;
+
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
@@ -140,6 +145,9 @@ private:
 	static Filter MainFrame::GetFilter(const FilterParameters &parameters,
 		const double &sampleRate);
 	void UpdateFilterSampleRates();
+
+	void EnableFileDependentControls();
+	void DisableFileDependentControls();
 
 	DECLARE_EVENT_TABLE();
 };

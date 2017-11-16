@@ -16,6 +16,7 @@ public:
 		const unsigned int& height);
 	void SetImage(wxImage&& newImage);
 	void Reset();
+	void ExportToFile(const wxString& fileName) const;
 	
 private:
 	wxImage image;

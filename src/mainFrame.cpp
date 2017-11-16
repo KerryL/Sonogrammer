@@ -7,7 +7,6 @@
 #include "mainFrame.h"
 #include "sonogrammerApp.h"
 #include "audioFile.h"
-#include "sonogramGenerator.h"
 #include "filter.h"
 #include "soundData.h"
 #include "staticImage.h"
@@ -104,6 +103,7 @@ void MainFrame::CreateControls()
 	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 
 	TransferDataToWindow();
+	DisableFileDependentControls();
 
 	SetSizerAndFit(topSizer);
 }
@@ -302,6 +302,10 @@ void MainFrame::SetProperties()
 	SetName(SonogrammerApp::internalName);
 	Center();
 
+	// Default color map
+	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
+
 #ifdef __WXMSW__
 	//SetIcon(wxIcon(_T("ICON_ID_MAIN"), wxBITMAP_TYPE_ICO_RESOURCE));
 #elif __WXGTK__
@@ -329,14 +333,21 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	// TODO:  Implement
 }
 
-void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& event)
+void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	HandleNewAudioFile();
 }
 
 void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	assert(audioFile);
+
+	wxFileDialog dialog(this, _T("Export Sonogram"), wxString(), wxString(),
+		_T("PNG files (*.png)|*.png;JPG files (*.jpg)|*.jpg"), wxFD_SAVE);
+	if (dialog.ShowModal() == wxID_CANCEL)
+		return;
+
+	sonogramImage->ExportToFile(dialog.GetPath());
 }
 
 void MainFrame::AddFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -440,8 +451,6 @@ void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
 	if (!audioFile)
 		return;
 
-	// TODO:  Ensure inputs are valid
-
 	UpdateFFTCalculatedInformation();
 	ApplyFilters();
 	UpdateSonogram();
@@ -458,6 +467,12 @@ void MainFrame::UpdateFFTCalculatedInformation()
 		wxMessageBox(_T("Failed to parse overlap."));
 		return;
 	}
+	else if (overlap < 0.0 || overlap > 1.0)
+	{
+		wxMessageBox(_T("Overlap must be between 0.0 and 1.0."));
+		return;
+	}
+
 	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
 }
 
@@ -468,6 +483,7 @@ void MainFrame::HandleNewAudioFile()
 	{
 		audioFile.reset();
 		sonogramImage->Reset();
+		DisableFileDependentControls();
 		return;
 	}
 
@@ -476,13 +492,17 @@ void MainFrame::HandleNewAudioFile()
 		wxMessageBox(_T("File '") + fileName + _T("' does not exist."));
 		audioFile.reset();
 		sonogramImage->Reset();
+		DisableFileDependentControls();
 		return;
 	}
 
 	audioFile = std::make_unique<AudioFile>(std::string(fileName.c_str()));
+	EnableFileDependentControls();
+
 	UpdateAudioInformation();
 	UpdateSonogramInformation();
 	UpdateFFTInformation();
+
 	originalSoundData = std::make_unique<SoundData>(audioFile->GetSoundData());
 	UpdateFilterSampleRates();
 	ApplyFilters();
@@ -525,7 +545,7 @@ void MainFrame::UpdateFFTInformation()
 {
 	resolutionSlider->SetMin(0);
 	resolutionSlider->SetMax(GetNumberOfResolutions());
-	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);// TODO:  Needs to be improved (balance of resolution and time slice) - could be based on available number of pixels for both directions?
+	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);
 	rangeText->SetLabel(wxString::Format(_T("%0.0f Hz"), audioFile->GetSampleRate() * 0.5));
 
 	UpdateFFTCalculatedInformation();
@@ -569,7 +589,8 @@ void MainFrame::UpdateSonogram()
 	}
 	else if (parameters.overlap < 0.0 || parameters.overlap > 1.0)
 	{
-		wxMessageBox(_T("Overlap must be between 0 and 1."));
+		//wxMessageBox(_T("Overlap must be between 0 and 1."));
+		// Message handled in UpdateFFTCalcualtedInformation()
 		return;
 	}
 
@@ -584,10 +605,6 @@ void MainFrame::UpdateSonogram()
 		wxMessageBox(_T("Failed to parse maximum frequency."));
 		return;
 	}
-
-	SonogramGenerator::ColorMap colorMap;// TODO:  Don't hardcode
-	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
 	sonogramImage->SetImage(generator.GetImage(colorMap));
@@ -627,4 +644,30 @@ double MainFrame::GetResolution() const
 unsigned int MainFrame::GetWindowSize() const
 {
 	return pow(2, resolutionSlider->GetValue() + 1);
+}
+
+void MainFrame::EnableFileDependentControls()
+{
+	exportSonogramImageButton->Enable();
+
+	playButton->Enable();
+	pauseButton->Enable();
+
+	timeMinText->Enable();
+	timeMaxText->Enable();
+	frequencyMinText->Enable();
+	frequencyMaxText->Enable();
+}
+
+void MainFrame::DisableFileDependentControls()
+{
+	exportSonogramImageButton->Enable(false);
+
+	playButton->Enable(false);
+	pauseButton->Enable(false);
+
+	timeMinText->Enable(false);
+	timeMaxText->Enable(false);
+	frequencyMinText->Enable(false);
+	frequencyMaxText->Enable(false);
 }

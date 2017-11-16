@@ -60,3 +60,10 @@ void StaticImage::Render(wxDC& dc)
 	
 	dc.DrawBitmap(resizedImage, 0, 0, false);
 }
+
+void StaticImage::ExportToFile(const wxString& fileName) const
+{
+	wxInitAllImageHandlers();
+	if (!image.SaveFile(fileName))
+		wxMessageBox(_T("Failed to save file to '") + fileName + _T("'."));
+}
