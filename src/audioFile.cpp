@@ -305,6 +305,27 @@ bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& r
 	return true;
 }
 
+bool AudioFile::ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& packet) const
+{
+	do
+	{
+		const int returnCode(av_read_frame(&formatContext, &packet));
+		if (returnCode != AVERROR_EOF)
+		{
+			if (LibCallWrapper::FFmpegErrorCheck(returnCode,
+				"Failed to read packet from file"))
+				return false;
+		}
+		else
+		{
+			packet.size = 0;
+			break;
+		}
+	} while (packet.stream_index != streamIndex);
+
+	return true;
+}
+
 bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& codecContext, Resampler& resampler)
 {
 	AVFrame* frame(av_frame_alloc());
@@ -314,18 +335,17 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	AVPacket packet;
 	av_init_packet(&packet);
 
-	if (LibCallWrapper::FFmpegErrorCheck(av_read_frame(&formatContext, &packet),
-		"Failed to read first packet from file"))
+	if (!ReadPacketFromFile(formatContext, packet))
 	{
 		av_frame_free(&frame);
 		return false;
 	}
 
 	dataInsertionPoint = 0;
-	std::generate(data->data.GetX().begin(), data->data.GetX().end(), [n = 0, this]() mutable
+	/*std::generate(data->data.GetX().begin(), data->data.GetX().end(), [n = 0.0, this]() mutable
 	{
 		return n++ / fileInfo.sampleRate;
-	});
+	});*/// Apparently, this bit isn't required
 
 	bool flushed(false);
 	while (packet.size > 0 || !flushed)
@@ -377,18 +397,11 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 
 		if (!flushed)
 		{
-			returnCode = av_read_frame(&formatContext, &packet);
-			if (returnCode != AVERROR_EOF)
+			if (!ReadPacketFromFile(formatContext, packet))
 			{
-				if (LibCallWrapper::FFmpegErrorCheck(returnCode,
-					"Failed to read packet from file"))
-				{
-					av_frame_free(&frame);
-					return false;
-				}
+				av_frame_free(&frame);
+				return false;
 			}
-			else
-				packet.size = 0;
 		}
 	}
 

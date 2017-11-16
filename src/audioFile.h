@@ -85,6 +85,7 @@ private:
 	bool ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& codecContext, Resampler& resampler);
 
 	void AppendFrame(const AVFrame& frame);
+	bool ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& packet) const;
 };
 
 #endif// AUDIO_FILE_H_
