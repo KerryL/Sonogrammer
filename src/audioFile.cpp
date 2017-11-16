@@ -33,18 +33,14 @@ extern "C"
 AudioFile::AudioFile(const std::string& fileName) : fileName(fileName)
 {
 	av_register_all();
-	ProbeAudioFile();
-	ExtractSoundData();
+	if (ProbeAudioFile())
+		ExtractSoundData();
 }
 
 int AudioFile::CheckStreamSpecifier(AVFormatContext* s, AVStream* st, const char* spec)
 {
     const int ret(avformat_match_stream_specifier(s, st, spec));
-	if (ret < 0)
-	{
-		// TODO:  Message
-	}
-
+	LibCallWrapper::FFmpegErrorCheck(ret, "Failed to match stream specifier");
     return ret;
 }
 
@@ -91,7 +87,7 @@ AVDictionary* AudioFile::FilterCodecOptions(AVDictionary* opts, AVCodecID codec_
 				continue;
 
 			default:
-				exit(1);// TODO:  Can't have this
+				return nullptr;
 			}
 
 		if (av_opt_find(&cc, t->key, NULL, flags, AV_OPT_SEARCH_FAKE_OBJ) || !codec ||
@@ -103,6 +99,7 @@ AVDictionary* AudioFile::FilterCodecOptions(AVDictionary* opts, AVCodecID codec_
 		if (p)
 			*p = ':';
     }
+
     return ret;
 }
 
@@ -114,11 +111,8 @@ AVDictionary** AudioFile::FindStreamInfoOptions(AVFormatContext* s, AVDictionary
 	AVDictionary **options;
 	options = static_cast<AVDictionary**>(av_mallocz_array(s->nb_streams, sizeof(*options)));
 
-	if (!options)
-	{
-		// TODO:  Message
+	if (LibCallWrapper::AllocationFailed(options, "Failed to allocate stream options dictionary"))
 		return nullptr;
-	}
 
 	unsigned int i;
 	for (i = 0; i < s->nb_streams; i++)
@@ -126,31 +120,26 @@ AVDictionary** AudioFile::FindStreamInfoOptions(AVFormatContext* s, AVDictionary
 	return options;
 }
 
-void AudioFile::ProbeAudioFile()
+bool AudioFile::ProbeAudioFile()
 {
 	fileInfo = AudioFileInformation();
 
 	AVFormatContext* formatContext(avformat_alloc_context());
-	if (!formatContext)
-	{
-		// TODO:  Message
-		return;
-	}
+	if (LibCallWrapper::AllocationFailed(formatContext, "Failed to allocate format context"))
+		return false;
 
-	if (avformat_open_input(&formatContext, fileName.c_str(), nullptr, nullptr) != 0)
-	{
-		// TODO:  Message
-		return;
-	}
+	if (LibCallWrapper::FFmpegErrorCheck(avformat_open_input(&formatContext, fileName.c_str(), nullptr, nullptr),
+		"Failed to open audio file"))
+		return false;
 
 	AVDictionary *codecOptions(nullptr);
 	AVDictionary **options(FindStreamInfoOptions(formatContext, codecOptions));
 
-	if (avformat_find_stream_info(formatContext, options) < 0)
+	if (LibCallWrapper::FFmpegErrorCheck(avformat_find_stream_info(formatContext, options),
+		"Failed to get stream information"))
 	{
-		// TODO:  Message
 		avformat_close_input(&formatContext);
-		return;
+		return false;
 	}
 
 	streamIndex = -1;
@@ -176,6 +165,7 @@ void AudioFile::ProbeAudioFile()
 	}
 
 	avformat_close_input(&formatContext);
+	return true;
 }
 
 std::string AudioFile::GetChannelFormatString(const uint64_t& layout)
@@ -236,25 +226,24 @@ std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 
 void AudioFile::ExtractSoundData()
 {
+	assert(fileInfo.duration > 0.0);
+
 	data = std::make_unique<SoundData>(fileInfo.sampleRate, fileInfo.duration);
 
 	AVFormatContext* formatContext(nullptr);
 	AVCodecContext* codecContext(nullptr);
-	if (!OpenAudioFile(formatContext, codecContext))
+	do
 	{
-		// TODO:  Message
-	}
+		if (!OpenAudioFile(formatContext, codecContext))
+			break;
 
-	Resampler resampler;
-	if (!CreateResampler(*codecContext, resampler))
-	{
-		// TODO:  Message
-	}
+		Resampler resampler;
+		if (!CreateResampler(*codecContext, resampler))
+			break;
 
-	if (!ReadAudioFile(*formatContext, *codecContext, resampler))
-	{
-		// TODO:  Message
-	}
+		if (!ReadAudioFile(*formatContext, *codecContext, resampler))
+			break;
+	} while (false);
 
 	avcodec_free_context(&codecContext);
 	avformat_close_input(&formatContext);
@@ -270,11 +259,7 @@ bool AudioFile::OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& 
 		"Failed to get stream information"))
 		return false;
 
-	if (streamIndex < 0)
-	{
-		//outStream << "Failed to find audio stream" << std::endl;
-		return false;
-	}
+	assert(streamIndex >= 0);
 
 	if (!CreateCodecContext(*formatContext, codecContext))
 		return false;
@@ -286,20 +271,12 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 {
 	AVCodec* codec;
 	codec = avcodec_find_decoder(formatContext.streams[streamIndex]->codecpar->codec_id);
-	if (!codec)
-	{
-		// TODO:  Message
-		//outStream << "Failed to find codec" << std::endl;
+	if (LibCallWrapper::AllocationFailed(codec, "Failed to find decoder"))
 		return false;
-	}
 
 	codecContext = avcodec_alloc_context3(codec);
-	if (!codecContext)
-	{
-		// TODO:  Message
-		//outStream << "Failed to allocate codec context" << std::endl;
+	if (LibCallWrapper::AllocationFailed(codecContext, "Failed to allocate decoder context"))
 		return false;
-	}
 
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_to_context(codecContext,
 		formatContext.streams[streamIndex]->codecpar), "Failed to convert parameters to context"))
@@ -331,12 +308,8 @@ bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& r
 bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& codecContext, Resampler& resampler)
 {
 	AVFrame* frame(av_frame_alloc());
-	if (!frame)
-	{
-		// TODO:  Message
-		//outStream << "Failed to allocate frame buffer" << std::endl;
+	if (LibCallWrapper::AllocationFailed(frame, "Failed to allocate frame buffer"))
 		return false;
-	}
 
 	AVPacket packet;
 	av_init_packet(&packet);

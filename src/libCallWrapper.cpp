@@ -49,5 +49,14 @@ bool FFmpegErrorCheck(int result, const std::string& message)
 	return false;
 }
 
+bool AllocationFailed(void* ptr, const std::string& message)
+{
+	if (ptr)
+		return false;
+
+	wxMessageBox(message);
+	return true;
+}
+
 }
 

@@ -63,6 +63,8 @@ private:
 	double GetScaledMagnitude(const double& magnitude) const;
 	wxColor GetColorFromMap(const double& magnitude, const ColorMap& colorMap) const;
 
+	unsigned int ComputeNumberOfSlices() const;
+
 	static wxColor GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
 		const wxColor& upperColor, const double& upperValue, const double& value);
 	static void GetHSV(const wxColor& c, double& hue, double& saturation, double& value);

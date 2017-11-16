@@ -54,9 +54,8 @@ bool Resampler::Initialize(const int& inputSampleRate, const uint64_t& inputChan
 		swr_free(&context);
 
 	context = swr_alloc();
-	if (!context)
+	if (LibCallWrapper::AllocationFailed(context, "Failed to allocate resampler context"))
 	{
-		//outStream << "Failed to allocate resampler context" << std::endl;
 		initialized = false;
 		return false;
 	}

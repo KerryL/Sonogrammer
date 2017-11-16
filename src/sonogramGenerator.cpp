@@ -101,8 +101,7 @@ double SonogramGenerator::GetScaledMagnitude(const double& magnitude) const
 void SonogramGenerator::ComputeFrequencyInformation()
 {
 	const double sliceWidth((parameters.windowSize + 1) / soundData.GetSampleRate());// [sec]
-	const unsigned int numberOfSlices((1.0 + parameters.overlap) * soundData.GetDuration() * soundData.GetSampleRate() / parameters.windowSize);
-	frequencyData.resize(numberOfSlices);
+	frequencyData.resize(ComputeNumberOfSlices());
 
 	minMagnitude = std::numeric_limits<double>::max();
 	maxMagnitude = 0.0;
@@ -112,39 +111,49 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	const unsigned int maxFrequencyIndex(parameters.maxFrequency / resolution);
 	assert(maxFrequencyIndex > minFrequencyIndex);
 
-	unsigned int i;
-	for (i = 0; i < numberOfSlices; ++i)
+	double startTime(0.0);
+	const double startIncrement(sliceWidth * (1.0 - parameters.overlap));
+	for (auto& sliceFrequency : frequencyData)
 	{
-		const double startTime(i * sliceWidth * (1.0 - parameters.overlap));
 		if (startTime >= soundData.GetDuration())
 		{
-			frequencyData[i] = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			sliceFrequency = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			startTime += startIncrement;
 			continue;
 		}
 
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
 		if (slice.GetNumberOfPoints() < parameters.windowSize)
 		{
-			frequencyData[i] = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			sliceFrequency = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			startTime += startIncrement;
 			continue;
 		}
 
+		startTime += startIncrement;
+
 		if (minFrequencyIndex == 0 && maxFrequencyIndex == slice.GetNumberOfPoints() - 1)
-			frequencyData[i] = std::move(ComputeTimeSliceFFT(slice));
+			sliceFrequency = std::move(ComputeTimeSliceFFT(slice));
 		else
 		{
 			auto fftData(std::move(ComputeTimeSliceFFT(slice)));
-			frequencyData[i] = std::vector<double>(fftData.begin() + minFrequencyIndex, fftData.begin() + maxFrequencyIndex);
+			sliceFrequency = std::vector<double>(fftData.begin() + minFrequencyIndex, fftData.begin() + maxFrequencyIndex);
 		}
 
-		const double maxElement(*std::max_element(frequencyData[i].begin(), frequencyData[i].end()));
+		const double maxElement(*std::max_element(sliceFrequency.begin(), sliceFrequency.end()));
 		if (maxElement > maxMagnitude)
 			maxMagnitude = maxElement;
 
-		const double minElement(*std::min_element(frequencyData[i].begin(), frequencyData[i].end()));
+		const double minElement(*std::min_element(sliceFrequency.begin(), sliceFrequency.end()));
 		if (minElement < minMagnitude)
 			minMagnitude = minElement;
 	}
+}
+
+unsigned int SonogramGenerator::ComputeNumberOfSlices() const
+{
+	return (soundData.GetDuration() * soundData.GetSampleRate() - parameters.windowSize)
+		/ (parameters.windowSize * (1.0 - parameters.overlap)) + 1;
 }
 
 std::vector<double> SonogramGenerator::ComputeTimeSliceFFT(const Dataset2D& sliceData) const

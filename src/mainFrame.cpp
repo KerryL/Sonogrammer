@@ -236,7 +236,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 
 	rangeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	windowSizeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
-	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.0"));
+	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.7"));
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Resolution (Hz)")));
 	innerSizer->Add(resolutionSlider);
@@ -406,6 +406,13 @@ void MainFrame::UpdateFFTCalculatedInformation()
 {
 	resolutionText->SetLabel(wxString::Format(_T("%f Hz"), GetResolution()));
 	windowSizeText->SetLabel(wxString::Format(_T("%d"), GetWindowSize()));
+
+	double overlap;
+	if (!overlapTextBox->GetValue().ToDouble(&overlap))
+	{
+		wxMessageBox(_T("Failed to parse overlap."));
+		return;
+	}
 	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
 }
 

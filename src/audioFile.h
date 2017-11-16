@@ -67,7 +67,7 @@ private:
 
 	AudioFileInformation fileInfo;
 
-	void ProbeAudioFile();
+	bool ProbeAudioFile();
 	int streamIndex;
 
 	static std::string GetChannelFormatString(const uint64_t& layout);

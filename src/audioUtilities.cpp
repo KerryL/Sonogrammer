@@ -49,12 +49,8 @@ std::string ListAudioDevices(const bool& input)
 AVFrame* CopyAVFrame(const AVFrame* frameIn)
 {
 	AVFrame* outFrame(av_frame_alloc());
-	if (!outFrame)
-	{
-		// TODO:  Message
-		//outStream << "Failed to allocate AVFrame" << std::endl;
+	if (LibCallWrapper::AllocationFailed(outFrame, "Failed to allocate AVFrame"))
 		return nullptr;
-	}
 
 	outFrame->format = frameIn->format;
 	outFrame->width = frameIn->width;
