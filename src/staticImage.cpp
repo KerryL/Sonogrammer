@@ -9,6 +9,7 @@
 StaticImage::StaticImage(wxWindow* parent, wxWindowID id, const unsigned int& width,
 	const unsigned int& height) : wxPanel(parent, id), image(wxImage(width, height))
 {
+	image.Replace(0, 0, 0, 255, 255, 255);
 	SetMinSize(wxSize(width, height));
 }
 
