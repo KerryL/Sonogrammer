@@ -16,10 +16,11 @@
 class AudioFile;
 class SoundData;
 class Filter;
+struct FilterParameters;
 class StaticImage;
 
 // wxWidgets forward declarations
-class wxListCtrl;
+class wxListBox;
 class wxListEvent;
 
 // The main frame class
@@ -54,7 +55,7 @@ private:
 
 	wxButton* addFilterButton;
 	wxButton* removeFilterButton;
-	wxListCtrl* filterList;
+	wxListBox* filterList;
 
 	wxStaticText* audioDurationText;
 	wxStaticText* audioSampleRateText;
@@ -113,7 +114,6 @@ private:
 
 	void AddFilterButtonClickedEvent(wxCommandEvent& event);
 	void RemoveFilterButtonClickedEvent(wxCommandEvent& event);
-	void FilterListRightClickEvent(wxListEvent& event);
 	void FilterListDoubleClickEvent(wxCommandEvent& event);
 
 	void ImageTextCtrlChangedEvent(wxCommandEvent& event);
@@ -131,10 +131,15 @@ private:
 
 	std::unique_ptr<AudioFile> audioFile;
 	std::vector<Filter> filters;
+	std::vector<FilterParameters> filterParameters;
 
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
+
+	static Filter MainFrame::GetFilter(const FilterParameters &parameters,
+		const double &sampleRate);
+	void UpdateFilterSampleRates();
 
 	DECLARE_EVENT_TABLE();
 };

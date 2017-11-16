@@ -136,6 +136,7 @@
     <ClCompile Include="src\expressionTree.cpp" />
     <ClCompile Include="src\fft.cpp" />
     <ClCompile Include="src\filter.cpp" />
+    <ClCompile Include="src\filterDialog.cpp" />
     <ClCompile Include="src\gitHash.cpp" />
     <ClCompile Include="src\libCallWrapper.cpp" />
     <ClCompile Include="src\mainFrame.cpp" />
@@ -152,6 +153,7 @@
     <ClInclude Include="src\expressionTree.h" />
     <ClInclude Include="src\fft.h" />
     <ClInclude Include="src\filter.h" />
+    <ClInclude Include="src\filterDialog.h" />
     <ClInclude Include="src\libCallWrapper.h" />
     <ClInclude Include="src\mainFrame.h" />
     <ClInclude Include="src\resampler.h" />

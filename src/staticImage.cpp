@@ -18,11 +18,20 @@ BEGIN_EVENT_TABLE(StaticImage, wxWindow)
 	EVT_SIZE(StaticImage::OnSize)
 END_EVENT_TABLE();
 
-void StaticImage::SetImage(wxImage&& bitmap)
+void StaticImage::SetImage(wxImage&& newImage)
 {
-	image = std::move(bitmap);
+	image = std::move(newImage);
 	width = -1;
 	height = -1;
+	Refresh();
+	Update();
+}
+
+void StaticImage::Reset()
+{
+	wxImage empty(1,1);
+	empty.Replace(0, 0, 0, 255, 255, 255);
+	SetImage(std::move(empty));
 }
 
 void StaticImage::OnPaint(wxPaintEvent& WXUNUSED(event))

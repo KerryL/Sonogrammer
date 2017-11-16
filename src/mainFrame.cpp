@@ -11,9 +11,10 @@
 #include "filter.h"
 #include "soundData.h"
 #include "staticImage.h"
+#include "filterDialog.h"
 
 // wxWidgets headers
-#include <wx/listctrl.h>
+#include <wx/listbox.h>
 
 // SDL headers
 #include <SDL_version.h>
@@ -62,7 +63,6 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_BUTTON(idExportSonogramImage,			MainFrame::ExportImageButtonClickedEvent)
 	EVT_BUTTON(idAddFilter,						MainFrame::AddFilterButtonClickedEvent)
 	EVT_BUTTON(idRemoveFilter,					MainFrame::RemoveFilterButtonClickedEvent)
-	EVT_LIST_ITEM_RIGHT_CLICK(wxID_ANY,			MainFrame::FilterListRightClickEvent)
 	EVT_LISTBOX_DCLICK(wxID_ANY,				MainFrame::FilterListDoubleClickEvent)
 	EVT_BUTTON(idEditColorMap,					MainFrame::EditColorMapButtonClickedEvent)
 	EVT_TEXT(idImageControl,					MainFrame::ImageTextCtrlChangedEvent)
@@ -145,7 +145,7 @@ wxSizer* MainFrame::CreateFilterControls(wxWindow* parent)
 	buttonSizer->Add(addFilterButton, wxSizerFlags().Border(wxRIGHT | wxLEFT, 5));
 	buttonSizer->Add(removeFilterButton, wxSizerFlags().Border(wxBOTTOM, 5));
 
-	filterList = new wxListCtrl(sizer->GetStaticBox());
+	filterList = new wxListBox(sizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize);
 	sizer->Add(filterList, wxSizerFlags().Expand().Proportion(1));
 
 	return sizer;
@@ -341,40 +341,80 @@ void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::AddFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
-	// Show dialog, get resulting filter from dialog, add it to our list and also the filter control
+	FilterDialog dialog(this);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	filterParameters.push_back(dialog.GetFilterParameters());
+	if (audioFile)
+		filters.push_back(GetFilter(filterParameters.back(), audioFile->GetSampleRate()));
+	else
+		filters.push_back(GetFilter(filterParameters.back(), 1.0));
+	filterList->Append(dialog.GetFilterNamePrefix(filterParameters.back()));
+
 	ApplyFilters();
+	UpdateSonogram();
+}
+
+Filter MainFrame::GetFilter(const FilterParameters &parameters, const double &sampleRate)
+{
+	return Filter(sampleRate,
+		Filter::CoefficientsFromString(std::string(parameters.numerator.mb_str())),
+		Filter::CoefficientsFromString(std::string(parameters.denominator.mb_str())));
 }
 
 void MainFrame::RemoveFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	if (filterList->GetSelectedItemCount() == 0)
+	wxArrayInt selections;
+	filterList->GetSelections(selections);
+
+	if (selections.size() == 0)
 		return;
 
-	long itemIndex(-1);
-	do
+	selections.Sort([](int* a, int* b)
 	{
-		itemIndex = filterList->GetNextItem(itemIndex, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED);
+		if (*a < *b)
+			return 1;
+		else if (*a > *b)
+			return -1;
+		return 0;
+	});
+
+	for (const auto& itemIndex : selections)
+	{
 		assert(itemIndex >= 0);
 		filters.erase(filters.begin() + itemIndex);
-		filterList->DeleteItem(itemIndex);
-	} while (itemIndex > 1);
+		filterParameters.erase(filterParameters.begin() + itemIndex);
+		filterList->Delete(itemIndex);
+	}
 
 	ApplyFilters();
+	UpdateSonogram();
 }
 
-void MainFrame::FilterListRightClickEvent(wxListEvent& event)
+void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	const int selectedIndex(filterList->GetSelection());
+	if (selectedIndex == wxNOT_FOUND)
+		return;
+
+	FilterDialog dialog(this, &filterParameters[selectedIndex]);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	filterParameters[selectedIndex] = dialog.GetFilterParameters();
+	if (audioFile)
+		filters[selectedIndex] = GetFilter(filterParameters[selectedIndex], audioFile->GetSampleRate());
+	else
+		filters[selectedIndex] = GetFilter(filterParameters[selectedIndex], 1.0);
+	filterList->Delete(selectedIndex);
+	filterList->Insert(dialog.GetFilterNamePrefix(filterParameters[selectedIndex]), selectedIndex);
+
+	ApplyFilters();
+	UpdateSonogram();
 }
 
-void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& event)
-{
-	// TODO:  Implement
-	// Edit the selected filter
-}
-
-void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& event)
+void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	ApplyFilters();
 	UpdateSonogram();
@@ -397,6 +437,11 @@ void MainFrame::ApplyFilters()
 
 void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	if (!audioFile)
+		return;
+
+	// TODO:  Ensure inputs are valid
+
 	UpdateFFTCalculatedInformation();
 	ApplyFilters();
 	UpdateSonogram();
@@ -420,11 +465,17 @@ void MainFrame::HandleNewAudioFile()
 {
 	const wxString fileName(audioFileName->GetValue());
 	if (fileName.IsEmpty())
+	{
+		audioFile.reset();
+		sonogramImage->Reset();
 		return;
+	}
 
 	if (!wxFileExists(fileName))
 	{
 		wxMessageBox(_T("File '") + fileName + _T("' does not exist."));
+		audioFile.reset();
+		sonogramImage->Reset();
 		return;
 	}
 
@@ -433,8 +484,16 @@ void MainFrame::HandleNewAudioFile()
 	UpdateSonogramInformation();
 	UpdateFFTInformation();
 	originalSoundData = std::make_unique<SoundData>(audioFile->GetSoundData());
+	UpdateFilterSampleRates();
 	ApplyFilters();
 	UpdateSonogram();
+}
+
+void MainFrame::UpdateFilterSampleRates()
+{
+	unsigned int i;
+	for (i = 0; i < filters.size(); ++i)
+		filters[i] = GetFilter(filterParameters[i], audioFile->GetSampleRate());
 }
 
 void MainFrame::UpdateAudioInformation()
@@ -532,8 +591,6 @@ void MainFrame::UpdateSonogram()
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
 	sonogramImage->SetImage(generator.GetImage(colorMap));
-	sonogramImage->Refresh();
-	sonogramImage->Update();
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const

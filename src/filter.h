@@ -19,7 +19,7 @@ public:
 	/// \param sampleRate Frequency at which the digital filter is sampled.
 	explicit Filter(const double &sampleRate);
 
-	explicit Filter(const Filter& f);
+	Filter(const Filter& f);
 	explicit Filter(Filter&& f);
 
 	/// Constructor.
