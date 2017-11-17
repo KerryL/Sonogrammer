@@ -334,10 +334,7 @@ std::vector<double> Filter::CoefficientsFromString(const std::string &s)
 	ExpressionTree e;
 	std::string expression;
 	std::string errorString = e.Solve(s, expression);
-	if (!errorString.empty())
-	{
-		// TODO:  Generate a warning here?
-	}
+	assert(errorString.empty());
 
 	std::vector<std::pair<int, double>> terms =
 		ExpressionTree::FindPowersAndCoefficients(
