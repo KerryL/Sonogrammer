@@ -97,7 +97,7 @@ void MainFrame::CreateControls()
 	wxBoxSizer* rightSizer(new wxBoxSizer(wxVERTICAL));
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
-	sonogramImage = new StaticImage(panel, wxID_ANY, 600, 200);
+	sonogramImage = new StaticImage(panel, *this, wxID_ANY, 600, 200);
 	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
 
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
@@ -299,6 +299,15 @@ wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 
 	editColorMapButton = new wxButton(sizer->GetStaticBox(), idEditColorMap, _T("Edit Color Map"));
 	sizer->Add(editColorMapButton, wxSizerFlags().Border(wxALL, 5));
+
+	wxGridSizer* cursoInfoSizer(new wxGridSizer(3, wxSize(5, 5)));
+	sizer->Add(cursoInfoSizer);
+	cursorTimeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+	cursorFrequencyText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
+
+	cursoInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Cursor Position")));
+	cursoInfoSizer->Add(cursorTimeText);
+	cursoInfoSizer->Add(cursorFrequencyText);
 
 	return sizer;
 }
@@ -776,4 +785,30 @@ void MainFrame::OnClose(wxCloseEvent& event)
 {
 	StopPlayingAudio();
 	event.Skip();
+}
+
+void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent)
+{
+	if (!audioFile || timePercent < 0.0 || frequencyPercent < 0.0)
+	{
+		cursorTimeText->SetLabel(wxString());
+		cursorFrequencyText->SetLabel(wxString());
+		return;
+	}
+
+	double minTime(0.0), maxTime(0.0);
+	double minFrequency(0.0), maxFrequency(0.0);
+
+	if (!timeMinText->GetValue().ToDouble(&minTime) ||
+		!timeMaxText->GetValue().ToDouble(&maxTime) ||
+		!frequencyMinText->GetValue().ToDouble(&minFrequency) ||
+		!frequencyMaxText->GetValue().ToDouble(&maxFrequency))
+	{
+		cursorTimeText->SetLabel(wxString());
+		cursorFrequencyText->SetLabel(wxString());
+		return;
+	}
+
+	cursorTimeText->SetLabel(wxString::Format(_T("%f sec"), minTime + (maxTime - minTime) * timePercent));
+	cursorFrequencyText->SetLabel(wxString::Format(_T("%f Hz"), minFrequency + (maxFrequency - minFrequency) * frequencyPercent));
 }

@@ -33,6 +33,8 @@ class MainFrame : public wxFrame
 public:
 	MainFrame();
 
+	void UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent);
+
 private:
 	void CreateControls();
 	void SetProperties();
@@ -86,6 +88,8 @@ private:
 	wxTextCtrl* frequencyMaxText;
 	wxCheckBox* logarithmicFrequencyCheckBox;
 	wxButton* editColorMapButton;
+	wxStaticText* cursorTimeText;
+	wxStaticText* cursorFrequencyText;
 
 	// The event IDs
 	enum MainFrameEventID

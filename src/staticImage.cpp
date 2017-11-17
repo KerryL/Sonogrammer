@@ -5,9 +5,11 @@
 
 // Local headers
 #include "staticImage.h"
+#include "mainFrame.h"
 
-StaticImage::StaticImage(wxWindow* parent, wxWindowID id, const unsigned int& width,
-	const unsigned int& height) : wxPanel(parent, id), image(wxImage(width, height))
+StaticImage::StaticImage(wxWindow* parent, MainFrame& mainFrame, wxWindowID id, const unsigned int& width,
+	const unsigned int& height) : wxPanel(parent, id), mainFrame(mainFrame),
+	image(wxImage(width, height))
 {
 	image.Replace(0, 0, 0, 255, 255, 255);
 	SetMinSize(wxSize(width, height));
@@ -16,6 +18,8 @@ StaticImage::StaticImage(wxWindow* parent, wxWindowID id, const unsigned int& wi
 BEGIN_EVENT_TABLE(StaticImage, wxWindow)
 	EVT_PAINT(StaticImage::OnPaint)
 	EVT_SIZE(StaticImage::OnSize)
+	EVT_MOTION(StaticImage::OnMouseMove)
+	EVT_LEAVE_WINDOW(StaticImage::OnMouseLeaveWindow)
 END_EVENT_TABLE();
 
 void StaticImage::SetImage(wxImage&& newImage)
@@ -66,4 +70,15 @@ void StaticImage::ExportToFile(const wxString& fileName) const
 	wxInitAllImageHandlers();
 	if (!image.SaveFile(fileName))
 		wxMessageBox(_T("Failed to save file to '") + fileName + _T("'."));
+}
+
+void StaticImage::OnMouseMove(wxMouseEvent& event)
+{
+	mainFrame.UpdateSonogramCursorInfo(static_cast<double>(event.GetX()) / GetSize().GetWidth(),
+		1.0 - static_cast<double>(event.GetY()) / GetSize().GetHeight());
+}
+
+void StaticImage::OnMouseLeaveWindow(wxMouseEvent& WXUNUSED(event))
+{
+	mainFrame.UpdateSonogramCursorInfo(-1.0, -1.0);
 }

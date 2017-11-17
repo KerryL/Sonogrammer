@@ -9,16 +9,20 @@
 // wxWidgets headers
 #include <wx/wx.h>
 
+// Local forward declarations
+class MainFrame;
+
 class StaticImage : public wxPanel
 {
 public:
-	StaticImage(wxWindow* parent, wxWindowID id, const unsigned int& width,
+	StaticImage(wxWindow* parent, MainFrame& mainFrame, wxWindowID id, const unsigned int& width,
 		const unsigned int& height);
 	void SetImage(wxImage&& newImage);
 	void Reset();
 	void ExportToFile(const wxString& fileName) const;
 	
 private:
+	MainFrame& mainFrame;
 	wxImage image;
 	wxBitmap resizedImage;
 	int width = -1;
@@ -26,6 +30,9 @@ private:
 
 	void OnPaint(wxPaintEvent& event);
 	void OnSize(wxSizeEvent& event);
+	void OnMouseMove(wxMouseEvent& event);
+	void OnMouseLeaveWindow(wxMouseEvent& event);
+
 	void Render(wxDC& dc);
 
 	DECLARE_EVENT_TABLE();
