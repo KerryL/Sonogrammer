@@ -19,24 +19,24 @@ class AudioFile;
 class SoundData
 {
 public:
-	SoundData(const double& sampleRate, const double& duration);
+	SoundData(const DatasetType& sampleRate, const DatasetType& duration);
 	explicit SoundData(const SoundData& sd);
 	explicit SoundData(SoundData&& sd);
 	SoundData& operator=(const SoundData& sd) = delete;
 	SoundData& operator=(SoundData&& sd) = delete;
 
-	std::unique_ptr<SoundData> ExtractSegment(const double& startTime, const double& endTime) const;
+	std::unique_ptr<SoundData> ExtractSegment(const DatasetType& startTime, const DatasetType& endTime) const;
 	std::unique_ptr<SoundData> ApplyFilter(Filter& filter) const;
 
-	inline double GetSampleRate() const { return sampleRate; }
-	inline double GetDuration() const { return duration; }
+	inline DatasetType GetSampleRate() const { return sampleRate; }
+	inline DatasetType GetDuration() const { return duration; }
 	inline Dataset2D GetData() const { return data; }
 
 private:
 	friend AudioFile;
 
-	const double sampleRate;// [Hz]
-	const double duration;// [sec]
+	const DatasetType sampleRate;// [Hz]
+	const DatasetType duration;// [sec]
 	Dataset2D data;
 };
 

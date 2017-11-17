@@ -300,7 +300,7 @@ const Dataset2D Dataset2D::operator/(const Dataset2D &target) const
 // Description:		Overloaded operator (+=).
 //
 // Input Arguments:
-//		target	= const double& to add to this
+//		target	= const DatasetType& to add to this
 //
 // Output Arguments:
 //		None
@@ -309,7 +309,7 @@ const Dataset2D Dataset2D::operator/(const Dataset2D &target) const
 //		Dataset2D& reference to this
 //
 //=============================================================================
-Dataset2D& Dataset2D::operator+=(const double &target)
+Dataset2D& Dataset2D::operator+=(const DatasetType &target)
 {
 	for (auto& y : mYData)
 		y += target;
@@ -324,7 +324,7 @@ Dataset2D& Dataset2D::operator+=(const double &target)
 // Description:		Overloaded operator (-=).
 //
 // Input Arguments:
-//		target	= const double& to subract from this
+//		target	= const DatasetType& to subract from this
 //
 // Output Arguments:
 //		None
@@ -333,7 +333,7 @@ Dataset2D& Dataset2D::operator+=(const double &target)
 //		Dataset2D& reference to this
 //
 //=============================================================================
-Dataset2D& Dataset2D::operator-=(const double &target)
+Dataset2D& Dataset2D::operator-=(const DatasetType &target)
 {
 	for (auto& y : mYData)
 		y -= target;
@@ -348,7 +348,7 @@ Dataset2D& Dataset2D::operator-=(const double &target)
 // Description:		Overloaded operator (*=).
 //
 // Input Arguments:
-//		target	= const double& to multiply with this
+//		target	= const DatasetType& to multiply with this
 //
 // Output Arguments:
 //		None
@@ -357,7 +357,7 @@ Dataset2D& Dataset2D::operator-=(const double &target)
 //		Dataset2D& reference to this
 //
 //=============================================================================
-Dataset2D& Dataset2D::operator*=(const double &target)
+Dataset2D& Dataset2D::operator*=(const DatasetType &target)
 {
 	for (auto& y : mYData)
 		y *= target;
@@ -372,7 +372,7 @@ Dataset2D& Dataset2D::operator*=(const double &target)
 // Description:		Overloaded operator (/=).
 //
 // Input Arguments:
-//		target	= const double& to divide into this
+//		target	= const DatasetType& to divide into this
 //
 // Output Arguments:
 //		None
@@ -381,7 +381,7 @@ Dataset2D& Dataset2D::operator*=(const double &target)
 //		Dataset2D& reference to this
 //
 //=============================================================================
-Dataset2D& Dataset2D::operator/=(const double &target)
+Dataset2D& Dataset2D::operator/=(const DatasetType &target)
 {
 	for (auto& y : mYData)
 		y /= target;
@@ -396,7 +396,7 @@ Dataset2D& Dataset2D::operator/=(const double &target)
 // Description:		Overloaded operator (+).
 //
 // Input Arguments:
-//		target	= const double& to add to this
+//		target	= const DatasetType& to add to this
 //
 // Output Arguments:
 //		None
@@ -405,7 +405,7 @@ Dataset2D& Dataset2D::operator/=(const double &target)
 //		const Dataset2D& containing desired sum
 //
 //=============================================================================
-const Dataset2D Dataset2D::operator+(const double &target) const
+const Dataset2D Dataset2D::operator+(const DatasetType &target) const
 {
 	Dataset2D result(*this);
 	result += target;
@@ -420,7 +420,7 @@ const Dataset2D Dataset2D::operator+(const double &target) const
 // Description:		Overloaded operator (-).
 //
 // Input Arguments:
-//		target	= const double& to subtract from this
+//		target	= const DatasetType& to subtract from this
 //
 // Output Arguments:
 //		None
@@ -429,7 +429,7 @@ const Dataset2D Dataset2D::operator+(const double &target) const
 //		const Dataset2D& containing desired difference
 //
 //=============================================================================
-const Dataset2D Dataset2D::operator-(const double &target) const
+const Dataset2D Dataset2D::operator-(const DatasetType &target) const
 {
 	Dataset2D result(*this);
 	result -= target;
@@ -444,7 +444,7 @@ const Dataset2D Dataset2D::operator-(const double &target) const
 // Description:		Overloaded operator (*).
 //
 // Input Arguments:
-//		target	= const double& to multiply with this
+//		target	= const DatasetType& to multiply with this
 //
 // Output Arguments:
 //		None
@@ -453,7 +453,7 @@ const Dataset2D Dataset2D::operator-(const double &target) const
 //		const Dataset2D& containing desired product
 //
 //=============================================================================
-const Dataset2D Dataset2D::operator*(const double &target) const
+const Dataset2D Dataset2D::operator*(const DatasetType &target) const
 {
 	Dataset2D result(*this);
 	result *= target;
@@ -468,7 +468,7 @@ const Dataset2D Dataset2D::operator*(const double &target) const
 // Description:		Overloaded operator (/).
 //
 // Input Arguments:
-//		target	= const double& to divide into this
+//		target	= const DatasetType& to divide into this
 //
 // Output Arguments:
 //		None
@@ -477,7 +477,7 @@ const Dataset2D Dataset2D::operator*(const double &target) const
 //		const Dataset2D& containing desired ratio
 //
 //=============================================================================
-const Dataset2D Dataset2D::operator/(const double &target) const
+const Dataset2D Dataset2D::operator/(const DatasetType &target) const
 {
 	Dataset2D result(*this);
 	result /= target;
@@ -492,7 +492,7 @@ const Dataset2D Dataset2D::operator/(const double &target) const
 // Description:		Overloaded operator (%).
 //
 // Input Arguments:
-//		target	= const double& to divide into this
+//		target	= const DatasetType& to divide into this
 //
 // Output Arguments:
 //		None
@@ -501,7 +501,7 @@ const Dataset2D Dataset2D::operator/(const double &target) const
 //		const Dataset2D& containing desired ratio
 //
 //=============================================================================
-const Dataset2D Dataset2D::operator%(const double &target) const
+const Dataset2D Dataset2D::operator%(const DatasetType &target) const
 {
 	Dataset2D result(*this);
 	unsigned int i;
@@ -524,12 +524,12 @@ const Dataset2D Dataset2D::operator%(const double &target) const
 //		None
 //
 // Return Value:
-//		double
+//		DatasetType
 //
 //=============================================================================
-double Dataset2D::ComputeYMean() const
+DatasetType Dataset2D::ComputeYMean() const
 {
-	return std::accumulate(mYData.cbegin(), mYData.cend(), 0.0)
+	return std::accumulate(mYData.cbegin(), mYData.cend(), static_cast<DatasetType>(0.0))
 		/ mYData.size();
 }
 
@@ -546,12 +546,12 @@ double Dataset2D::ComputeYMean() const
 //		None
 //
 // Return Value:
-//		double
+//		DatasetType
 //
 //=============================================================================
-double Dataset2D::GetAverageDeltaX() const
+DatasetType Dataset2D::GetAverageDeltaX() const
 {
-	double sum(0.0);
+	DatasetType sum(0.0);
 	unsigned int i;
 	for (i = 1; i < mXData.size(); ++i)
 		sum += mXData[i] - mXData[i - 1];

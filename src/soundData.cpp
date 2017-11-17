@@ -11,7 +11,7 @@
 #include <cassert>
 #include <algorithm>
 
-SoundData::SoundData(const double& sampleRate, const double& duration) : sampleRate(sampleRate),
+SoundData::SoundData(const DatasetType& sampleRate, const DatasetType& duration) : sampleRate(sampleRate),
 	duration(duration), data(static_cast<unsigned int>(sampleRate * duration))
 {
 }
@@ -24,24 +24,24 @@ SoundData::SoundData(SoundData&& sd) : sampleRate(sd.sampleRate), duration(sd.du
 {
 }
 
-std::unique_ptr<SoundData> SoundData::ExtractSegment(const double& startTime, const double& endTime) const
+std::unique_ptr<SoundData> SoundData::ExtractSegment(const DatasetType& startTime, const DatasetType& endTime) const
 {
 	assert(endTime > startTime);
 	//assert(endTime <= duration);// Too strict - values formatted with %f are truncated, so when we come back in here, duration could be longer out past 6th decimal place
-	const double segmentDuration(std::min(duration, endTime) - startTime);
+	const DatasetType segmentDuration(std::min(duration, endTime) - startTime);
 	auto segment(std::make_unique<SoundData>(sampleRate, segmentDuration));
 
 	// Because our data has a constant sample rate, we can calculate the indices
-	const auto firstGoodIndex(static_cast<std::vector<double>::size_type>(startTime * sampleRate));
-	const auto newPointCount(static_cast<std::vector<double>::size_type>(segmentDuration * sampleRate));
+	const auto firstGoodIndex(static_cast<std::vector<DatasetType>::size_type>(startTime * sampleRate));
+	const auto newPointCount(static_cast<std::vector<DatasetType>::size_type>(segmentDuration * sampleRate));
 
 	const auto firstX(data.GetX().begin() + firstGoodIndex);
 	const auto lastX(firstX + newPointCount);
 	const auto firstY(data.GetY().begin() + firstGoodIndex);
 	const auto lastY(firstY + newPointCount);
 
-	segment->data.GetX() = std::vector<double>(firstX, lastX);
-	segment->data.GetY() = std::vector<double>(firstY, lastY);
+	segment->data.GetX() = std::vector<DatasetType>(firstX, lastX);
+	segment->data.GetY() = std::vector<DatasetType>(firstY, lastY);
 
 	return segment;
 }

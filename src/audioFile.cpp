@@ -228,7 +228,7 @@ void AudioFile::ExtractSoundData()
 {
 	assert(fileInfo.duration > 0.0);
 
-	data = std::make_unique<SoundData>(fileInfo.sampleRate, fileInfo.duration);
+	data = std::make_unique<SoundData>(static_cast<DatasetType>(fileInfo.sampleRate), static_cast<DatasetType>(fileInfo.duration));
 
 	AVFormatContext* formatContext(nullptr);
 	AVCodecContext* codecContext(nullptr);

@@ -17,7 +17,6 @@
 
 // Local headers
 #include "fft.h"
-#include "dataset2D.h"
 
 //=============================================================================
 // Class:			FastFourierTransform
@@ -71,7 +70,7 @@ std::unique_ptr<Dataset2D> FastFourierTransform::ComputeFFT(
 	Dataset2D data, const WindowType &window,
 	unsigned int windowSize, const double &overlap, const bool &subtractMean)
 {
-	double sampleRate = 1.0 / data.GetAverageDeltaX();// [Hz]
+	const DatasetType sampleRate(static_cast<DatasetType>(1.0) / data.GetAverageDeltaX());// [Hz]
 
 	if (subtractMean)
 		data.operator-(data.ComputeYMean());
@@ -195,7 +194,7 @@ void FastFourierTransform::AddToAverage(Dataset2D &average, const Dataset2D &dat
 	}
 
 	for (i = 0; i < average.GetNumberOfPoints(); ++i)
-		average.GetY()[i] += data.GetY()[i] / double(count);
+		average.GetY()[i] += data.GetY()[i] / static_cast<DatasetType>(count);
 }
 
 //=============================================================================
@@ -295,8 +294,8 @@ void FastFourierTransform::ZeroDataset(Dataset2D &data)
 // Description:		Generates a dataset with constant x- and y-values.
 //
 // Input Arguments:
-//		xValue	= const double&
-//		yValue	= const double&
+//		xValue	= const DatasetType&
+//		yValue	= const DatasetType&
 //		size	= const unsigned int&
 //
 // Output Arguments:
@@ -306,7 +305,8 @@ void FastFourierTransform::ZeroDataset(Dataset2D &data)
 //		None
 //
 //=============================================================================
-Dataset2D FastFourierTransform::GenerateConstantDataset(const double &xValue, const double &yValue, const unsigned int &size)
+Dataset2D FastFourierTransform::GenerateConstantDataset(const DatasetType &xValue,
+	const DatasetType &yValue, const unsigned int &size)
 {
 	Dataset2D data(size);
 
@@ -342,7 +342,7 @@ void FastFourierTransform::DoBitReversal(Dataset2D &set)
 	assert(double(set.GetNumberOfPoints()) / 2.0 == double(set.GetNumberOfPoints() / 2));
 
 	unsigned int i, j;
-	double tempX, tempY;
+	DatasetType tempX, tempY;
 
 	j = 0;
 	for (i = 0; i < set.GetNumberOfPoints() - 1; ++i)
@@ -388,18 +388,18 @@ void FastFourierTransform::DoBitReversal(Dataset2D &set)
 void FastFourierTransform::DoFFT(Dataset2D &temp)
 {
 	unsigned int i, j, i1, l, l2;
-	double c1, c2, t1, t2, z;
+	DatasetType c1, c2, t1, t2, z;
 	unsigned int powerOfTwo = GetMaxPowerOfTwo(temp.GetNumberOfPoints());
 
-	c1 = -1.0;
-	c2 = 0.0;
+	c1 = static_cast<DatasetType>(-1.0);
+	c2 = static_cast<DatasetType>(0.0);
 	l2 = 1;
 	for (l = 0; l < powerOfTwo; ++l)
 	{
 		unsigned int l1(l2);
 		l2 <<= 1;
-		double u1(1.0);
-		double u2(0.0);
+		DatasetType u1(static_cast<DatasetType>(1.0));
+		DatasetType u2(static_cast<DatasetType>(0.0));
 		for (j = 0; j < l1; ++j)
 		{
 			for (i = j; i < temp.GetNumberOfPoints(); i += l2)
@@ -416,9 +416,9 @@ void FastFourierTransform::DoFFT(Dataset2D &temp)
 			u2 = u1 * c2 + u2 * c1;
 			u1 = z;
 		}
-		c2 = sqrt((1.0 - c1) / 2.0);
+		c2 = sqrt((static_cast<DatasetType>(1.0) - c1) / static_cast<DatasetType>(2.0));
 		c2 = -c2;
-		c1 = sqrt((1.0 + c1) / 2.0);
+		c1 = sqrt((static_cast<DatasetType>(1.0) + c1) / static_cast<DatasetType>(2.0));
 	}
 }
 
@@ -441,7 +441,8 @@ void FastFourierTransform::DoFFT(Dataset2D &temp)
 //		Dataset2D containing single-sided data
 //
 //=============================================================================
-Dataset2D FastFourierTransform::ConvertDoubleSidedToSingleSided(const Dataset2D &fullSpectrum, const bool &preserveDCValue)
+Dataset2D FastFourierTransform::ConvertDoubleSidedToSingleSided(
+	const Dataset2D &fullSpectrum, const bool &preserveDCValue)
 {
 	Dataset2D halfSpectrum;
 	unsigned int i;
@@ -456,7 +457,7 @@ Dataset2D FastFourierTransform::ConvertDoubleSidedToSingleSided(const Dataset2D 
 		for (i = 1; i < halfSpectrum.GetNumberOfPoints(); ++i)
 		{
 			halfSpectrum.GetX()[i] = fullSpectrum.GetX()[i];
-			halfSpectrum.GetY()[i] = fullSpectrum.GetY()[i] * 2.0;
+			halfSpectrum.GetY()[i] = fullSpectrum.GetY()[i] * static_cast<DatasetType>(2.0);
 		}
 	}
 	else
@@ -492,11 +493,11 @@ Dataset2D FastFourierTransform::ConvertDoubleSidedToSingleSided(const Dataset2D 
 //=============================================================================
 void FastFourierTransform::ConvertAmplitudeToDecibels(Dataset2D &fft)
 {
-	double referenceAmplitude(
+	DatasetType referenceAmplitude(
 		*std::max_element(fft.GetY().cbegin(), fft.GetY().cend()));
 
 	for (auto& y : fft.GetY())
-		y = 20.0 * log10(y / referenceAmplitude);
+		y = static_cast<DatasetType>(20.0) * log10(y / referenceAmplitude);
 }
 
 //=============================================================================
@@ -507,7 +508,7 @@ void FastFourierTransform::ConvertAmplitudeToDecibels(Dataset2D &fft)
 //					data appropriate for the sample rate.
 //
 // Input Arguments:
-//		sampleRate	= const double& [Hz]
+//		sampleRate	= const DatasetType& [Hz]
 //
 // Output Arguments:
 //		data		= Dataset2D&
@@ -517,7 +518,7 @@ void FastFourierTransform::ConvertAmplitudeToDecibels(Dataset2D &fft)
 //
 //=============================================================================
 void FastFourierTransform::PopulateFrequencyData(Dataset2D &data,
-	const double &sampleRate)
+	const DatasetType &sampleRate)
 {
 	unsigned int i;
 	for (i = 0; i < data.GetNumberOfPoints(); ++i)
@@ -533,7 +534,7 @@ void FastFourierTransform::PopulateFrequencyData(Dataset2D &data,
 //
 // Input Arguments:
 //		rawFFT		= const Dataset2D&
-//		sampleRate	= const double& [Hz]
+//		sampleRate	= const DatasetType& [Hz]
 //
 // Output Arguments:
 //		None
@@ -543,7 +544,7 @@ void FastFourierTransform::PopulateFrequencyData(Dataset2D &data,
 //
 //=============================================================================
 Dataset2D FastFourierTransform::GetAmplitudeData(const Dataset2D &rawFFT,
-	const double &sampleRate)
+	const DatasetType &sampleRate)
 {
 	Dataset2D data(rawFFT);
 	PopulateFrequencyData(data, sampleRate);
@@ -651,7 +652,7 @@ Dataset2D FastFourierTransform::ComplexDivide(const Dataset2D &a, const Dataset2
 	unsigned int i;
 	for (i = 0; i < a.GetNumberOfPoints(); ++i)
 	{
-		double denominator(b.GetX()[i] * b.GetX()[i] + b.GetY()[i] * b.GetY()[i]);
+		DatasetType denominator(b.GetX()[i] * b.GetX()[i] + b.GetY()[i] * b.GetY()[i]);
 		result.GetX()[i] = (a.GetX()[i] * b.GetX()[i] + a.GetY()[i] * b.GetY()[i]) / denominator;
 		result.GetY()[i] = (a.GetY()[i] * b.GetX()[i] - a.GetX()[i] * b.GetY()[i]) / denominator;
 	}
@@ -707,15 +708,15 @@ Dataset2D FastFourierTransform::ComplexMagnitude(const Dataset2D &a)
 //		Dataset2D
 //
 //=============================================================================
-Dataset2D FastFourierTransform::ComplexPower(const Dataset2D &a, const double &power)
+Dataset2D FastFourierTransform::ComplexPower(const Dataset2D &a, const DatasetType &power)
 {
 	Dataset2D result(a.GetNumberOfPoints());
 
 	unsigned int i;
 	for (i = 0; i < a.GetNumberOfPoints(); ++i)
 	{
-		double magnitude(sqrt(a.GetX()[i] * a.GetX()[i] + a.GetY()[i] * a.GetY()[i]));
-		double angle(atan2(a.GetY()[i], a.GetX()[i]));
+		DatasetType magnitude(sqrt(a.GetX()[i] * a.GetX()[i] + a.GetY()[i] * a.GetY()[i]));
+		DatasetType angle(atan2(a.GetY()[i], a.GetX()[i]));
 
 		magnitude = pow(magnitude, power);
 		angle *= power;
@@ -785,8 +786,8 @@ void FastFourierTransform::ApplyHannWindow(Dataset2D &data)
 {
 	unsigned int i;
 	for (i = 0; i < data.GetNumberOfPoints(); ++i)
-		data.GetX()[i] *= 1.0 - cos(
-			2.0 * M_PI * i / (data.GetNumberOfPoints() - 1.0));
+		data.GetX()[i] *= static_cast<DatasetType>(1.0) - cos(
+			static_cast<DatasetType>(2.0 * M_PI) * i / (data.GetNumberOfPoints() - static_cast<DatasetType>(1.0)));
 }
 
 //=============================================================================
@@ -811,8 +812,8 @@ void FastFourierTransform::ApplyHammingWindow(Dataset2D &data)
 	const double pointsMinusOne(data.GetNumberOfPoints() - 1.0);
 	unsigned int i;
 	for (i = 0; i < data.GetNumberOfPoints(); ++i)
-		data.GetX()[i] *= (0.54 - 0.46
-		* cos(2.0 * M_PI * i / pointsMinusOne)) / 0.54;
+		data.GetX()[i] *= static_cast<DatasetType>((0.54 - 0.46
+		* cos(2.0 * M_PI * i / pointsMinusOne)) / 0.54);
 }
 
 //=============================================================================
@@ -838,11 +839,11 @@ void FastFourierTransform::ApplyFlatTopWindow(Dataset2D &data)
 	const double pointsMinusOne(data.GetNumberOfPoints() - 1.0);
 	unsigned int i;
 	for (i = 0; i < data.GetNumberOfPoints(); ++i)
-		data.GetX()[i] *= 1.0
+		data.GetX()[i] *= static_cast<DatasetType>(1.0
 		- 1.93 * cos(2.0 * M_PI * i / pointsMinusOne)
 		+ 1.29 * cos(4.0 * M_PI * i / pointsMinusOne)
 		- 0.388 * cos(6.0 * M_PI * i / pointsMinusOne)
-		+ 0.032 * cos(8.0 * M_PI * i / pointsMinusOne);
+		+ 0.032 * cos(8.0 * M_PI * i / pointsMinusOne));
 }
 
 //=============================================================================
@@ -886,7 +887,7 @@ void FastFourierTransform::ApplyFlatTopWindow(Dataset2D &data)
 void FastFourierTransform::ApplyExponentialWindow(Dataset2D &data)
 {
 	unsigned int i;
-	const double tau((1.0 - data.GetNumberOfPoints()) / log(0.02));
+	const DatasetType tau((static_cast<DatasetType>(1.0) - data.GetNumberOfPoints()) / log(static_cast<DatasetType>(0.02)));
 	for (i = 0; i < data.GetNumberOfPoints(); ++i)
 		data.GetX()[i] *= exp(-static_cast<int>(i) / tau);
 }

@@ -8,6 +8,7 @@
 
 // Local headers
 #include "sonogramGenerator.h"
+#include "audioRenderer.h"
 
 // wxWidgets headers
 #include <wx/wx.h>
@@ -68,6 +69,7 @@ private:
 
 	wxButton* pauseButton;
 	wxButton* playButton;
+	wxButton* stopButton;
 	wxCheckBox* includeFiltersInPlayback;
 
 	wxSlider* resolutionSlider;
@@ -101,7 +103,7 @@ private:
 
 		idPauseButton,
 		idPlayButton,
-		idIncludeFilters,
+		idStopButton,
 
 		idImageControl,
 
@@ -123,6 +125,12 @@ private:
 	void EditColorMapButtonClickedEvent(wxCommandEvent& event);
 
 	void FFTSettingsChangedEvent(wxCommandEvent& event);
+
+	void PlayButtonClickedEvent(wxCommandEvent& event);
+	void PauseButtonClickedEvent(wxCommandEvent& event);
+	void StopButtonClickedEvent(wxCommandEvent& event);
+
+	void OnRenderThreadInfoEvent(wxCommandEvent& event);
 
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();
@@ -148,6 +156,12 @@ private:
 
 	void EnableFileDependentControls();
 	void DisableFileDependentControls();
+
+	AudioRenderer audioRenderer;
+	void StopPlayingAudio();
+
+	void SetControlEnablesOnPlay();
+	void SetControlEnablesOnStop();
 
 	DECLARE_EVENT_TABLE();
 };

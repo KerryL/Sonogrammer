@@ -23,6 +23,8 @@
 // wxWidgets forward declarations
 class wxString;
 
+typedef float DatasetType;
+
 /// Class for representing paired x-y data.
 class Dataset2D
 {
@@ -44,11 +46,11 @@ public:
 
 	/// Computes the mean of the y-data.
 	/// \returns The mean of the y-data.
-	double ComputeYMean() const;
+	DatasetType ComputeYMean() const;
 
 	/// Computes the average of the delta between adjacent x-data.
 	/// \returns The average of the delta between adjacent x-data.
-	double GetAverageDeltaX() const;
+	DatasetType GetAverageDeltaX() const;
 
 	/// Gets the number of points stored in this object.
 	/// \returns The number of points stored in this object.
@@ -57,10 +59,10 @@ public:
 	/// \name Private data accessors
 	/// @{
 
-	const std::vector<double>& GetX() const { return mXData; };
-	const std::vector<double>& GetY() const { return mYData; };
-	std::vector<double>& GetX() { return mXData; };
-	std::vector<double>& GetY() { return mYData; };
+	const std::vector<DatasetType>& GetX() const { return mXData; };
+	const std::vector<DatasetType>& GetY() const { return mYData; };
+	std::vector<DatasetType>& GetX() { return mXData; };
+	std::vector<DatasetType>& GetY() { return mYData; };
 
 	/// @}
 
@@ -77,21 +79,21 @@ public:
 	const Dataset2D operator*(const Dataset2D &target) const;
 	const Dataset2D operator/(const Dataset2D &target) const;
 
-	Dataset2D& operator+=(const double &target);
-	Dataset2D& operator-=(const double &target);
-	Dataset2D& operator*=(const double &target);
-	Dataset2D& operator/=(const double &target);
+	Dataset2D& operator+=(const DatasetType &target);
+	Dataset2D& operator-=(const DatasetType &target);
+	Dataset2D& operator*=(const DatasetType &target);
+	Dataset2D& operator/=(const DatasetType &target);
 
-	const Dataset2D operator+(const double &target) const;
-	const Dataset2D operator-(const double &target) const;
-	const Dataset2D operator*(const double &target) const;
-	const Dataset2D operator/(const double &target) const;
-	const Dataset2D operator%(const double &target) const;
+	const Dataset2D operator+(const DatasetType &target) const;
+	const Dataset2D operator-(const DatasetType &target) const;
+	const Dataset2D operator*(const DatasetType &target) const;
+	const Dataset2D operator/(const DatasetType &target) const;
+	const Dataset2D operator%(const DatasetType &target) const;
 
 	/// @}
 
 private:
-	std::vector<double> mXData, mYData;
+	std::vector<DatasetType> mXData, mYData;
 };
 
 #endif// DATASET_H_

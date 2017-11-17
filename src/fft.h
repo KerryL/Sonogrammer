@@ -14,6 +14,9 @@
 #ifndef FFT_H_
 #define FFT_H_
 
+// Local headers
+#include "dataset2D.h"
+
 // Standard C++ headers
 #include <string>
 #include <set>
@@ -119,7 +122,7 @@ private:
 	static void DoFFT(Dataset2D &temp);
 
 	static void ZeroDataset(Dataset2D &data);
-	static Dataset2D GenerateConstantDataset(const double &xValue, const double &yValue, const unsigned int &size);
+	static Dataset2D GenerateConstantDataset(const DatasetType &xValue, const DatasetType &yValue, const unsigned int &size);
 
 	static Dataset2D ConvertDoubleSidedToSingleSided(const Dataset2D &fullSpectrum, const bool &preserveDCValue = true);
 
@@ -130,9 +133,9 @@ private:
 
 	static void ConvertAmplitudeToDecibels(Dataset2D &fft);
 
-	static void PopulateFrequencyData(Dataset2D &data, const double &sampleRate);
+	static void PopulateFrequencyData(Dataset2D &data, const DatasetType &sampleRate);
 
-	static Dataset2D GetAmplitudeData(const Dataset2D &rawFFT, const double &sampleRate);
+	static Dataset2D GetAmplitudeData(const Dataset2D &rawFFT, const DatasetType &sampleRate);
 
 	static Dataset2D ComputeRawFFT(const Dataset2D &data, const WindowType &window);
 	static void InitializeRawFFTDataset(Dataset2D &rawFFT, const Dataset2D &data, const WindowType &window);
@@ -141,7 +144,7 @@ private:
 	static Dataset2D ComplexMultiply(const Dataset2D &a, const Dataset2D &b);
 	static Dataset2D ComplexDivide(const Dataset2D &a, const Dataset2D &b);
 	static Dataset2D ComplexMagnitude(const Dataset2D &a);
-	static Dataset2D ComplexPower(const Dataset2D &a, const double &power);
+	static Dataset2D ComplexPower(const Dataset2D &a, const DatasetType &power);
 
 	static unsigned int ComputeRequiredOverlapPoints(const unsigned int &dataSize,
 		const unsigned int &windowSize, const unsigned int &averages);

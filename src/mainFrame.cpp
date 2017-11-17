@@ -32,7 +32,7 @@ extern "C"
 #include <inttypes.h>
 
 MainFrame::MainFrame() : wxFrame(NULL, wxID_ANY, wxEmptyString,
-	wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE)
+	wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE), audioRenderer(GetEventHandler())
 {
 	CreateControls();
 	SetProperties();
@@ -55,19 +55,23 @@ MainFrame::MainFrame() : wxFrame(NULL, wxID_ANY, wxEmptyString,
 //
 //==========================================================================
 BEGIN_EVENT_TABLE(MainFrame, wxFrame)
-	EVT_BUTTON(idButtonLoadAudioFile,			MainFrame::LoadAudioButtonClickedEvent)
-	EVT_BUTTON(idButtonLoadSonogramConfig,		MainFrame::LoadConfigButtonClickedEvent)
-	EVT_BUTTON(idButtonSaveSonogramConfig,		MainFrame::SaveConfigButtonClickedEvent)
-	EVT_TEXT(idPrimaryControl,					MainFrame::PrimaryTextCtrlChangedEvent)
-	EVT_BUTTON(idExportSonogramImage,			MainFrame::ExportImageButtonClickedEvent)
-	EVT_BUTTON(idAddFilter,						MainFrame::AddFilterButtonClickedEvent)
-	EVT_BUTTON(idRemoveFilter,					MainFrame::RemoveFilterButtonClickedEvent)
-	EVT_LISTBOX_DCLICK(wxID_ANY,				MainFrame::FilterListDoubleClickEvent)
-	EVT_BUTTON(idEditColorMap,					MainFrame::EditColorMapButtonClickedEvent)
-	EVT_TEXT(idImageControl,					MainFrame::ImageTextCtrlChangedEvent)
-	EVT_SLIDER(idFFT,							MainFrame::FFTSettingsChangedEvent)
-	EVT_TEXT(idFFT,								MainFrame::FFTSettingsChangedEvent)
-	EVT_COMBOBOX(idFFT,							MainFrame::FFTSettingsChangedEvent)
+	EVT_BUTTON(idButtonLoadAudioFile,				MainFrame::LoadAudioButtonClickedEvent)
+	EVT_BUTTON(idButtonLoadSonogramConfig,			MainFrame::LoadConfigButtonClickedEvent)
+	EVT_BUTTON(idButtonSaveSonogramConfig,			MainFrame::SaveConfigButtonClickedEvent)
+	EVT_TEXT(idPrimaryControl,						MainFrame::PrimaryTextCtrlChangedEvent)
+	EVT_BUTTON(idExportSonogramImage,				MainFrame::ExportImageButtonClickedEvent)
+	EVT_BUTTON(idAddFilter,							MainFrame::AddFilterButtonClickedEvent)
+	EVT_BUTTON(idRemoveFilter,						MainFrame::RemoveFilterButtonClickedEvent)
+	EVT_LISTBOX_DCLICK(wxID_ANY,					MainFrame::FilterListDoubleClickEvent)
+	EVT_BUTTON(idPlayButton,						MainFrame::PlayButtonClickedEvent)
+	EVT_BUTTON(idPauseButton,						MainFrame::PauseButtonClickedEvent)
+	EVT_BUTTON(idStopButton,						MainFrame::StopButtonClickedEvent)
+	EVT_BUTTON(idEditColorMap,						MainFrame::EditColorMapButtonClickedEvent)
+	EVT_TEXT(idImageControl,						MainFrame::ImageTextCtrlChangedEvent)
+	EVT_SLIDER(idFFT,								MainFrame::FFTSettingsChangedEvent)
+	EVT_TEXT(idFFT,									MainFrame::FFTSettingsChangedEvent)
+	EVT_COMBOBOX(idFFT,								MainFrame::FFTSettingsChangedEvent)
+	EVT_COMMAND(wxID_ANY, RenderThreadInfoEvent,	MainFrame::OnRenderThreadInfoEvent)
 END_EVENT_TABLE();
 
 void MainFrame::CreateControls()
@@ -185,9 +189,11 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 
 	pauseButton = new wxButton(sizer->GetStaticBox(), idPauseButton, _T("Pause"));
 	playButton = new wxButton(sizer->GetStaticBox(), idPlayButton, _T("Play"));
-	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), idIncludeFilters, _T("Include Filters in Playback"));
+	stopButton = new wxButton(sizer->GetStaticBox(), idStopButton, _T("Stop"));
+	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), wxID_ANY, _T("Include Filters in Playback"));
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
+	buttonSizer->Add(stopButton, wxSizerFlags().Border(wxALL, 5));
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
 
 	sizer->AddSpacer(15);
@@ -343,7 +349,7 @@ void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	assert(audioFile);
 
 	wxFileDialog dialog(this, _T("Export Sonogram"), wxString(), wxString(),
-		_T("PNG files (*.png)|*.png;JPG files (*.jpg)|*.jpg"), wxFD_SAVE);
+		_T("PNG files (*.png)|*.png|JPG files (*.jpg)|*.jpg"), wxFD_SAVE);
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
 
@@ -434,6 +440,12 @@ void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	// TODO:  Implement
+
+	colorMap.clear();
+	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(0, 0, 0)));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(255, 0, 0)));
+
+	UpdateSonogram();
 }
 
 void MainFrame::ApplyFilters()
@@ -476,6 +488,51 @@ void MainFrame::UpdateFFTCalculatedInformation()
 	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
 }
 
+void MainFrame::PlayButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	SetControlEnablesOnPlay();
+
+	if (audioRenderer.IsPaused())
+		audioRenderer.Resume();
+	else if (includeFiltersInPlayback->GetValue())
+		audioRenderer.Play(*filteredSoundData);
+	else
+		audioRenderer.Play(*originalSoundData);
+}
+
+void MainFrame::PauseButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	audioRenderer.Pause();
+	playButton->Enable();
+}
+
+void MainFrame::StopButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	StopPlayingAudio();
+}
+
+void MainFrame::StopPlayingAudio()
+{
+	audioRenderer.Stop();
+	SetControlEnablesOnStop();
+}
+
+void MainFrame::SetControlEnablesOnPlay()
+{
+	includeFiltersInPlayback->Enable(false);
+	playButton->Enable(false);
+	pauseButton->Enable();
+	stopButton->Enable();
+}
+
+void MainFrame::SetControlEnablesOnStop()
+{
+	includeFiltersInPlayback->Enable();
+	playButton->Enable();
+	pauseButton->Enable(false);
+	stopButton->Enable(false);
+}
+
 void MainFrame::HandleNewAudioFile()
 {
 	const wxString fileName(audioFileName->GetValue());
@@ -484,6 +541,7 @@ void MainFrame::HandleNewAudioFile()
 		audioFile.reset();
 		sonogramImage->Reset();
 		DisableFileDependentControls();
+		StopPlayingAudio();
 		return;
 	}
 
@@ -493,6 +551,7 @@ void MainFrame::HandleNewAudioFile()
 		audioFile.reset();
 		sonogramImage->Reset();
 		DisableFileDependentControls();
+		StopPlayingAudio();
 		return;
 	}
 
@@ -651,7 +710,8 @@ void MainFrame::EnableFileDependentControls()
 	exportSonogramImageButton->Enable();
 
 	playButton->Enable();
-	pauseButton->Enable();
+	//pauseButton->Enable();// Gets enabled after we begin playing
+	//stopButton->Enable();// Gets enabled after we begin playing
 
 	timeMinText->Enable();
 	timeMaxText->Enable();
@@ -665,9 +725,27 @@ void MainFrame::DisableFileDependentControls()
 
 	playButton->Enable(false);
 	pauseButton->Enable(false);
+	stopButton->Enable(false);
 
 	timeMinText->Enable(false);
 	timeMaxText->Enable(false);
 	frequencyMinText->Enable(false);
 	frequencyMaxText->Enable(false);
+}
+
+void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
+{
+	switch (static_cast<AudioRenderer::InfoType>(event.GetInt()))
+	{
+	case AudioRenderer::InfoType::Error:
+		wxMessageBox(event.GetString());
+		break;
+
+	case AudioRenderer::InfoType::Stopped:
+		StopPlayingAudio();
+		break;
+
+	default:
+		assert(false);
+	}
 }

@@ -53,15 +53,15 @@ private:
 	const SoundData& soundData;
 	const FFTParameters parameters;
 
-	double minMagnitude;
-	double maxMagnitude;
+	DatasetType minMagnitude;
+	DatasetType maxMagnitude;
 
-	std::vector<std::vector<double>> frequencyData;// first index time, second index frequency
+	std::vector<std::vector<DatasetType>> frequencyData;// first index time, second index frequency
 	void ComputeFrequencyInformation();
-	std::vector<double> ComputeTimeSliceFFT(const Dataset2D& sliceData) const;
+	std::vector<DatasetType> ComputeTimeSliceFFT(const Dataset2D& sliceData) const;
 
-	double GetScaledMagnitude(const double& magnitude) const;
-	wxColor GetColorFromMap(const double& magnitude, const ColorMap& colorMap) const;
+	DatasetType GetScaledMagnitude(const DatasetType& magnitude) const;
+	wxColor GetColorFromMap(const DatasetType& magnitude, const ColorMap& colorMap) const;
 
 	unsigned int ComputeNumberOfSlices() const;
 

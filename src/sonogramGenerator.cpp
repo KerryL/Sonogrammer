@@ -40,9 +40,9 @@ wxImage SonogramGenerator::GetImage(const ColorMap& colorMap) const
 	return sonogram;
 }
 
-wxColor SonogramGenerator::GetColorFromMap(const double& magnitude, const ColorMap& colorMap) const
+wxColor SonogramGenerator::GetColorFromMap(const DatasetType& magnitude, const ColorMap& colorMap) const
 {
-	const double scaledMagnitude(GetScaledMagnitude(magnitude));
+	const DatasetType scaledMagnitude(GetScaledMagnitude(magnitude));
 	MagnitudeColor lower, upper;
 	bool foundLower(false);
 	for (const auto& c : colorMap)
@@ -90,7 +90,7 @@ wxColor SonogramGenerator::GetInterpolatedColor(const wxColor& lowerColor, const
 		lowerV + (upperV - lowerV) * value / (upperValue - lowerValue));
 }
 
-double SonogramGenerator::GetScaledMagnitude(const double& magnitude) const
+DatasetType SonogramGenerator::GetScaledMagnitude(const DatasetType& magnitude) const
 {
 	assert(maxMagnitude >= minMagnitude);
 	if (maxMagnitude == minMagnitude)
@@ -100,10 +100,10 @@ double SonogramGenerator::GetScaledMagnitude(const double& magnitude) const
 
 void SonogramGenerator::ComputeFrequencyInformation()
 {
-	const double sliceWidth((parameters.windowSize + 1) / soundData.GetSampleRate());// [sec]
+	const DatasetType sliceWidth((parameters.windowSize + 1) / soundData.GetSampleRate());// [sec]
 	frequencyData.resize(ComputeNumberOfSlices());
 
-	minMagnitude = std::numeric_limits<double>::max();
+	minMagnitude = std::numeric_limits<DatasetType>::max();
 	maxMagnitude = 0.0;
 
 	const double resolution(soundData.GetSampleRate() / parameters.windowSize);// [Hz]
@@ -111,13 +111,13 @@ void SonogramGenerator::ComputeFrequencyInformation()
 	const unsigned int maxFrequencyIndex(parameters.maxFrequency / resolution);
 	assert(maxFrequencyIndex > minFrequencyIndex);
 
-	double startTime(0.0);
-	const double startIncrement(sliceWidth * (1.0 - parameters.overlap));
+	DatasetType startTime(0.0);
+	const DatasetType startIncrement(sliceWidth * (1.0 - parameters.overlap));
 	for (auto& sliceFrequency : frequencyData)
 	{
 		if (startTime >= soundData.GetDuration())
 		{
-			sliceFrequency = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			sliceFrequency = std::vector<DatasetType>(maxFrequencyIndex - minFrequencyIndex, 0.0);
 			startTime += startIncrement;
 			continue;
 		}
@@ -125,7 +125,7 @@ void SonogramGenerator::ComputeFrequencyInformation()
 		Dataset2D slice(soundData.ExtractSegment(startTime, std::min(startTime + sliceWidth, soundData.GetDuration()))->GetData());
 		if (slice.GetNumberOfPoints() < parameters.windowSize)
 		{
-			sliceFrequency = std::vector<double>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			sliceFrequency = std::vector<DatasetType>(maxFrequencyIndex - minFrequencyIndex, 0.0);
 			startTime += startIncrement;
 			continue;
 		}
@@ -137,7 +137,7 @@ void SonogramGenerator::ComputeFrequencyInformation()
 		else
 		{
 			auto fftData(std::move(ComputeTimeSliceFFT(slice)));
-			sliceFrequency = std::vector<double>(fftData.begin() + minFrequencyIndex, fftData.begin() + maxFrequencyIndex);
+			sliceFrequency = std::vector<DatasetType>(fftData.begin() + minFrequencyIndex, fftData.begin() + maxFrequencyIndex);
 		}
 
 		const double maxElement(*std::max_element(sliceFrequency.begin(), sliceFrequency.end()));
@@ -156,7 +156,7 @@ unsigned int SonogramGenerator::ComputeNumberOfSlices() const
 		/ (parameters.windowSize * (1.0 - parameters.overlap)) + 1;
 }
 
-std::vector<double> SonogramGenerator::ComputeTimeSliceFFT(const Dataset2D& sliceData) const
+std::vector<DatasetType> SonogramGenerator::ComputeTimeSliceFFT(const Dataset2D& sliceData) const
 {
 	return FastFourierTransform::ComputeFFT(sliceData,
 		parameters.windowFunction, parameters.windowSize, 0.0, true)->GetY();
