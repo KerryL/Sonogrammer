@@ -327,6 +327,11 @@ void MainFrame::SetProperties()
 
 void MainFrame::LoadAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	wxFileDialog dialog(this, _T("Load Audio File"), wxString(), wxString(), _T(""), wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	audioFileName->ChangeValue(dialog.GetPath());
 	HandleNewAudioFile();
 }
 
@@ -350,7 +355,7 @@ void MainFrame::ExportImageButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	assert(audioFile);
 
 	wxFileDialog dialog(this, _T("Export Sonogram"), wxString(), wxString(),
-		_T("PNG files (*.png)|*.png|JPG files (*.jpg)|*.jpg"), wxFD_SAVE);
+		_T("PNG files (*.png)|*.png|JPG files (*.jpg)|*.jpg"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
 
