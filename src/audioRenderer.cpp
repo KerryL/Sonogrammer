@@ -111,13 +111,18 @@ void AudioRenderer::RenderLoop()
 
 	while (state != State::Idle)
 	{
+		const std::chrono::milliseconds waitDuration(200);
 		std::unique_lock<std::mutex> lock(mutex);
-		stateChangeCondition.wait(lock);
+		stateChangeCondition.wait_for(lock, waitDuration);
 
 		if (state == State::Paused)
 			SDL_PauseAudioDevice(outputDevice, 1);
 		else if (state == State::Playing)
+		{
 			SDL_PauseAudioDevice(outputDevice, 0);
+			if (SDL_GetQueuedAudioSize(outputDevice) == 0)
+				break;
+		}
 	}
 
 	SDL_CloseAudioDevice(outputDevice);
