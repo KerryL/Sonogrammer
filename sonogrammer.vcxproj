@@ -133,6 +133,7 @@
     <ClCompile Include="src\audioFile.cpp" />
     <ClCompile Include="src\audioRenderer.cpp" />
     <ClCompile Include="src\audioUtilities.cpp" />
+    <ClCompile Include="src\colorMapDialog.cpp" />
     <ClCompile Include="src\dataset2D.cpp" />
     <ClCompile Include="src\expressionTree.cpp" />
     <ClCompile Include="src\fft.cpp" />
@@ -151,6 +152,7 @@
     <ClInclude Include="src\audioFile.h" />
     <ClInclude Include="src\audioRenderer.h" />
     <ClInclude Include="src\audioUtilities.h" />
+    <ClInclude Include="src\colorMapDialog.h" />
     <ClInclude Include="src\dataset2D.h" />
     <ClInclude Include="src\expressionTree.h" />
     <ClInclude Include="src\fft.h" />

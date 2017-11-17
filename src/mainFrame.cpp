@@ -11,6 +11,7 @@
 #include "soundData.h"
 #include "staticImage.h"
 #include "filterDialog.h"
+#include "colorMapDialog.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
@@ -454,12 +455,12 @@ void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	ColorMapDialog dialog(this, colorMap);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
 
-	colorMap.clear();
-	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(0, 0, 0)));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(255, 0, 0)));
-
+	colorMap = dialog.GetColorMap();
+	assert(colorMap.size() > 1);
 	UpdateSonogram();
 }
 
