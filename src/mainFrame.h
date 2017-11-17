@@ -132,6 +132,8 @@ private:
 
 	void OnRenderThreadInfoEvent(wxCommandEvent& event);
 
+	void OnClose(wxCloseEvent& event);
+
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();
 	void UpdateFFTInformation();

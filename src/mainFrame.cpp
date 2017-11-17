@@ -72,6 +72,7 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_TEXT(idFFT,									MainFrame::FFTSettingsChangedEvent)
 	EVT_COMBOBOX(idFFT,								MainFrame::FFTSettingsChangedEvent)
 	EVT_COMMAND(wxID_ANY, RenderThreadInfoEvent,	MainFrame::OnRenderThreadInfoEvent)
+	EVT_CLOSE(										MainFrame::OnClose)
 END_EVENT_TABLE();
 
 void MainFrame::CreateControls()
@@ -491,13 +492,29 @@ void MainFrame::UpdateFFTCalculatedInformation()
 void MainFrame::PlayButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	SetControlEnablesOnPlay();
-
 	if (audioRenderer.IsPaused())
+	{
 		audioRenderer.Resume();
-	else if (includeFiltersInPlayback->GetValue())
-		audioRenderer.Play(*filteredSoundData);
+		return;
+	}
+
+	double startTime, endTime;
+	if (!timeMinText->GetValue().ToDouble(&startTime))
+	{
+		wxMessageBox(_T("Failed to parse minimum time."));
+		return;
+	}
+
+	if (!timeMaxText->GetValue().ToDouble(&endTime))
+	{
+		wxMessageBox(_T("Failed to parse maximum time."));
+		return;
+	}
+
+	if (includeFiltersInPlayback->GetValue())
+		audioRenderer.Play(*filteredSoundData->ExtractSegment(startTime, endTime));
 	else
-		audioRenderer.Play(*originalSoundData);
+		audioRenderer.Play(*originalSoundData->ExtractSegment(startTime, endTime));
 }
 
 void MainFrame::PauseButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -748,4 +765,10 @@ void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
 	default:
 		assert(false);
 	}
+}
+
+void MainFrame::OnClose(wxCloseEvent& event)
+{
+	StopPlayingAudio();
+	event.Skip();
 }

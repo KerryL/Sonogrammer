@@ -22,7 +22,7 @@ extern "C"
 // Standard C++ headers
 #include <cassert>
 
-const int Resampler::frameSize(1024);
+const int Resampler::frameSize(4096);
 
 Resampler::Resampler()
 {
@@ -121,6 +121,7 @@ AVFrame* Resampler::Resample(const AVFrame* frame)
 bool Resampler::CallResampler(const uint8_t** rawData, const unsigned int inputSampleCount,
 	const bool& resetSampleCount)
 {
+	assert(swr_get_out_samples(context, inputSampleCount) <= frameSize);// TODO:  Implement support for buffered input
 	const int sampleCount(swr_convert(context, audioOutBuffer, static_cast<int>(maxOutputSampleCount),
 		rawData, inputSampleCount));
 	if (LibCallWrapper::FFmpegErrorCheck(sampleCount, "Failed to convert audio format"))

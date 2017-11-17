@@ -17,7 +17,7 @@
 // wxWidgets headers
 #include <wx/event.h>
 
-DECLARE_EVENT_TYPE(RenderThreadInfoEvent, -1)
+DECLARE_LOCAL_EVENT_TYPE(RenderThreadInfoEvent, -1)
 
 /// Class for applying an arbitrary digital filter (transfer function) to data.
 class AudioRenderer

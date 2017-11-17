@@ -157,7 +157,7 @@ bool AudioFile::ProbeAudioFile()
 
 		fileInfo.duration = s->duration * static_cast<double>(s->time_base.num) / s->time_base.den;
 		fileInfo.sampleRate = s->codecpar->sample_rate;
-		fileInfo.channelFormat = GetChannelFormatString(s->codecpar->channel_layout);
+		fileInfo.channelFormat = GetChannelFormatString(s->codecpar->channel_layout, s->codecpar->channels);
 		fileInfo.bitRate = s->codecpar->bit_rate;
 		fileInfo.sampleFormat = GetSampleFormatString(static_cast<AVSampleFormat>(s->codecpar->format));
 		streamIndex = i;
@@ -168,13 +168,13 @@ bool AudioFile::ProbeAudioFile()
 	return true;
 }
 
-std::string AudioFile::GetChannelFormatString(const uint64_t& layout)
+std::string AudioFile::GetChannelFormatString(const uint64_t& layout, const int& channelCount)
 {
-	if (layout == AV_CH_LAYOUT_MONO)
+	if (layout == AV_CH_LAYOUT_MONO || channelCount == 1)
 		return "Mono";
-	else if (layout == AV_CH_LAYOUT_STEREO)
+	else if (layout == AV_CH_LAYOUT_STEREO || channelCount == 2)
 		return "Stereo";
-	else if (layout == AV_CH_LAYOUT_QUAD)
+	else if (layout == AV_CH_LAYOUT_QUAD || channelCount == 4)
 		return "Quad";
 
 	return "Multi";
@@ -319,6 +319,7 @@ bool AudioFile::ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& pac
 		else
 		{
 			packet.size = 0;
+			packet.data = nullptr;
 			break;
 		}
 	} while (packet.stream_index != streamIndex);
@@ -347,30 +348,16 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 		return n++ / fileInfo.sampleRate;
 	});*/// Apparently, this bit isn't required
 
-	bool flushed(false);
-	while (packet.size > 0 || !flushed)
+	int returnCode(0);
+	while (returnCode != AVERROR_EOF)
 	{
-		if (packet.size > 0)
+		if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, &packet),
+			"Error sending packet from file to decoder"))
 		{
-			if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, &packet),
-				"Error sending packet from file to decoder"))
-			{
-				av_frame_free(&frame);
-				return false;
-			}
-		}
-		else if (!flushed)
-		{
-			if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, nullptr),
-				"Error flushing decoder"))
-			{
-				av_frame_free(&frame);
-				return false;
-			}
-			flushed = true;
+			av_frame_free(&frame);
+			return false;
 		}
 
-		int returnCode;
 		bool gotAFrame(false);
 		do
 		{
@@ -395,13 +382,10 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 			}
 		} while (returnCode == 0);
 
-		if (!flushed)
+		if (!ReadPacketFromFile(formatContext, packet))
 		{
-			if (!ReadPacketFromFile(formatContext, packet))
-			{
-				av_frame_free(&frame);
-				return false;
-			}
+			av_frame_free(&frame);
+			return false;
 		}
 	}
 
@@ -409,9 +393,15 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	return true;
 }
 
+#include <fstream>// TODO:  Remove
+std::ofstream t("test.csv");// TODO:  Remove
+
 void AudioFile::AppendFrame(const AVFrame& frame)
 {
 	const float* floatData(reinterpret_cast<float*>(frame.data[0]));// Because we resampled to FLTP
+	unsigned int i;// TODO:  Remove
+	for (i = 0; i < frame.linesize[0] / sizeof(float); ++i)// TODO:  Remove
+		t << floatData[i] << '\n';// TODO:  Remove
 	std::copy(floatData, floatData + frame.linesize[0] / sizeof(float),
 		data->data.GetY().begin() + dataInsertionPoint);
 	dataInsertionPoint += frame.nb_samples;

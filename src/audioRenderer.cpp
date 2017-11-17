@@ -13,7 +13,7 @@
 #include <cassert>
 #include <sstream>
 
-DEFINE_EVENT_TYPE(RenderThreadInfoEvent)
+DEFINE_LOCAL_EVENT_TYPE(RenderThreadInfoEvent)
 
 AudioRenderer::AudioRenderer(wxEvtHandler* appEventHandler) : appEventHandler(appEventHandler)
 {

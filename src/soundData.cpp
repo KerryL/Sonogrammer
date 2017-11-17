@@ -52,7 +52,7 @@ std::unique_ptr<SoundData> SoundData::ApplyFilter(Filter& filter) const
 
 	filter.Initialize(filteredData->data.GetY().front());
 	for (auto& v : filteredData->data.GetY())
-		v = filter.Apply(v);
+		v = static_cast<DatasetType>(filter.Apply(v));
 
 	return filteredData;
 }

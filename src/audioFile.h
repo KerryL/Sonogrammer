@@ -70,7 +70,7 @@ private:
 	bool ProbeAudioFile();
 	int streamIndex;
 
-	static std::string GetChannelFormatString(const uint64_t& layout);
+	static std::string GetChannelFormatString(const uint64_t& layout, const int& channelCount);
 	static std::string GetSampleFormatString(const AVSampleFormat& format);
 
 	// Taken from ffprobe.c and cmdutils.c files
