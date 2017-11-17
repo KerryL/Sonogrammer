@@ -393,15 +393,9 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	return true;
 }
 
-#include <fstream>// TODO:  Remove
-std::ofstream t("test.csv");// TODO:  Remove
-
 void AudioFile::AppendFrame(const AVFrame& frame)
 {
 	const float* floatData(reinterpret_cast<float*>(frame.data[0]));// Because we resampled to FLTP
-	unsigned int i;// TODO:  Remove
-	for (i = 0; i < frame.linesize[0] / sizeof(float); ++i)// TODO:  Remove
-		t << floatData[i] << '\n';// TODO:  Remove
 	std::copy(floatData, floatData + frame.linesize[0] / sizeof(float),
 		data->data.GetY().begin() + dataInsertionPoint);
 	dataInsertionPoint += frame.nb_samples;
