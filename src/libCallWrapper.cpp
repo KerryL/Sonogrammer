@@ -6,8 +6,10 @@
 // Local headers
 #include "libCallWrapper.h"
 
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
+#endif// _WIN32
 
 // FFmpeg headers
 extern "C"
@@ -15,7 +17,9 @@ extern "C"
 #include <libavcodec/avcodec.h>
 }
 
+#ifdef _WIN32
 #pragma warning(pop)
+#endif// _WIN32
 
 // wxWidgets headers
 #include <wx/wx.h>

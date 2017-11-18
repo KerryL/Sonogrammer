@@ -72,6 +72,9 @@ AVDictionary* AudioFile::FilterCodecOptions(AVDictionary* opts, AVCodecID codec_
 		prefix  = 's';
 		flags  |= AV_OPT_FLAG_SUBTITLE_PARAM;
 		break;
+
+	default:
+		assert(false);// Other types not supported
 	}
 
 	while (t = av_dict_get(opts, "", t, AV_DICT_IGNORE_SUFFIX), t)
@@ -219,6 +222,9 @@ std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 
 	case AV_SAMPLE_FMT_S64P:
 		return "S64P";
+
+	default:
+		break;
 	}
 
 	return "Unknown";

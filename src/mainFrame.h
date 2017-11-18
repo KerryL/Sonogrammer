@@ -156,7 +156,7 @@ private:
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
 
-	static Filter MainFrame::GetFilter(const FilterParameters &parameters,
+	static Filter GetFilter(const FilterParameters &parameters,
 		const double &sampleRate);
 	void UpdateFilterSampleRates();
 

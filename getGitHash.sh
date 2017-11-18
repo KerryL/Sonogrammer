@@ -21,4 +21,4 @@ echo // Local headers>> $outputPath$outputFile
 echo \#include \"sonogrammerApp.h\">> $outputPath$outputFile
 echo>> $outputPath$outputFile
 echo const wxString SonogrammerApp::versionString = _T\(\"$gitTag\"\)\;>> $outputPath$outputFile
-echo const wxString sonogrammerApp::gitHash = _T\(\"$gitHash\"\)\;>> $outputPath$outputFile
+echo const wxString SonogrammerApp::gitHash = _T\(\"$gitHash\"\)\;>> $outputPath$outputFile

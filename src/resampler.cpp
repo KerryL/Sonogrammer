@@ -8,17 +8,6 @@
 #include "audioUtilities.h"
 #include "libCallWrapper.h"
 
-#pragma warning(push)
-#pragma warning(disable:4244)
-
-// FFmpeg headers
-extern "C"
-{
-#include <libswresample/swresample.h>
-}
-
-#pragma warning(pop)
-
 // Standard C++ headers
 #include <cassert>
 

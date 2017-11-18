@@ -1,4 +1,4 @@
-# makefile (Sonogrammer)
+# makefile (sonogrammer)
 #
 # Include the common definitions
 include makefile.inc

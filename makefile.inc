@@ -1,4 +1,4 @@
-# makefile.inc (Sonogrammer)
+# makefile.inc (sonogrammer)
 # This file contains all of the environment definitions
 # common to each of the makefiles within the project. 
 #
@@ -42,11 +42,10 @@ AR = ar rcs
 RANLIB = ranlib
 
 # Compiler flags
-#CFLAGS = -g -Wall -Wextra -Werror $(INCDIRS) `wx-config --cppflags` -std=c++0x
-CFLAGS = -g -Wall -Wextra $(INCDIRS) `wx-config --cppflags`
+CFLAGS = -g -Wall -Wextra -Werror $(INCDIRS) `wx-config --cppflags` -std=c++14 `pkg-config --cflags libavformat libswresample libavcodec libavutil sdl2`
 
 # Linker flags
-LDFLAGS = $(LIBDIRS) $(LIBS) `wx-config --libs`
+LDFLAGS = $(LIBDIRS) $(LIBS) `wx-config --libs` `pkg-config --libs libavformat libswresample libavcodec libavutil sdl2`
 
 # Object file output directory
 OBJDIR = $(PWD)/.obj/

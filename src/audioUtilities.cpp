@@ -10,22 +10,25 @@
 // SDL headers
 #include <SDL.h>
 
+#ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
+#endif// _WIN32
 
 // FFmpeg headers
 extern "C"
 {
 #include <libavcodec/avcodec.h>
-#include <libswresample/swresample.h>
 #include <libavutil/opt.h>
 }
 
+#ifdef _WIN32
 #pragma warning(pop)
 
 // Windows headers
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>// for struct timeval
+#endif// _WIN32
 
 // Standard C++ headers
 #include <sstream>

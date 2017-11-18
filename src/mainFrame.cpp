@@ -326,12 +326,12 @@ void MainFrame::SetProperties()
 #ifdef __WXMSW__
 	//SetIcon(wxIcon(_T("ICON_ID_MAIN"), wxBITMAP_TYPE_ICO_RESOURCE));
 #elif __WXGTK__
-	SetIcon(wxIcon(plots16_xpm));
+	/*SetIcon(wxIcon(plots16_xpm));
 	SetIcon(wxIcon(plots24_xpm));
 	SetIcon(wxIcon(plots32_xpm));
 	SetIcon(wxIcon(plots48_xpm));
 	SetIcon(wxIcon(plots64_xpm));
-	SetIcon(wxIcon(plots128_xpm));
+	SetIcon(wxIcon(plots128_xpm));*/
 #endif
 }
 

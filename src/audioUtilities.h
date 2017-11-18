@@ -6,14 +6,24 @@
 #ifndef AUDIO_UTILITIES_H_
 #define AUDIO_UTILITIES_H_
 
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif// _WIN32
+
+// FFmpeg headers
+extern "C"
+{
+#include <libswresample/swresample.h>
+}
+
+#ifdef _WIN32
+#pragma warning(pop)
+#endif// _WIN32
+
 // Standard C++ headers
 #include <string>
 #include <iostream>
-
-// FFmpeg forward declarations
-struct AVFrame;
-enum AVSampleFormat;
-struct SwrContext;
 
 // Windows forward declarations
 struct timeval;
