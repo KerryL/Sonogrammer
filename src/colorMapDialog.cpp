@@ -6,6 +6,9 @@
 // Local headers
 #include "colorMapDialog.h"
 
+// wxWidgets
+#include <wx/colordlg.h>
+
 // Standard C++ headers
 #include <cassert>
 
@@ -14,13 +17,12 @@ ColorMapDialog::ColorMapDialog(wxWindow *parent, const SonogramGenerator::ColorM
 {
 	CreateControls();
 	CenterOnParent();
-	PopulateInitialMap();
 }
 
 BEGIN_EVENT_TABLE(ColorMapDialog, wxDialog)
 	EVT_BUTTON(idAddButton,			ColorMapDialog::OnAddButtonClickEvent)
 	EVT_BUTTON(idRemoveButton,		ColorMapDialog::OnRemoveButtonClickEvent)
-	EVT_GRID_CELL_CHANGED(			ColorMapDialog::OnGridCellChangeEvent)
+	EVT_GRID_CELL_CHANGING(			ColorMapDialog::OnGridCellChangingEvent)
 	EVT_GRID_CELL_LEFT_CLICK(		ColorMapDialog::OnGridCellDoubleClickEvent)
 END_EVENT_TABLE();
 
@@ -41,18 +43,34 @@ void ColorMapDialog::CreateControls()
 	mapEntryGrid = new wxGrid(this, wxID_ANY);
 	mainSizer->Add(mapEntryGrid, wxSizerFlags().Expand());
 
-	mapEntryGrid->CreateGrid(0, 2);
-	mapEntryGrid->SetColLabelValue(0, _T("Magnitude (%)"));
-	mapEntryGrid->SetColLabelValue(0, _T("Color"));
+	mapEntryGrid->BeginBatch();
+
+	mapEntryGrid->CreateGrid(0, 2, wxGrid::wxGridSelectRows);
+	mapEntryGrid->SetColLabelValue(0, _T("Magnitude (0..1)"));
+	mapEntryGrid->SetColLabelValue(1, _T("Color"));
 	mapEntryGrid->SetColFormatFloat(0);
 	mapEntryGrid->SetRowLabelSize(0);
+	mapEntryGrid->AutoSizeColLabelSize(0);
+	mapEntryGrid->AutoSizeColLabelSize(1);
+
+	PopulateInitialMap();
+
+	const int minRowCount(6);
+	if (mapEntryGrid->GetNumberRows() < minRowCount)
+		mapEntryGrid->InsertRows(mapEntryGrid->GetNumberRows(), minRowCount - mapEntryGrid->GetNumberRows());
+
+	mapEntryGrid->EndBatch();
 
 	mainSizer->AddSpacer(15);
 	wxSizer* buttonSizer(CreateButtonSizer(wxOK | wxCANCEL));
 	if (buttonSizer)
 		mainSizer->Add(buttonSizer);
 
-	SetSizerAndFit(topSizer);// TODO:  Why aren't buttons showing up?
+	SetSizerAndFit(topSizer);
+	mapEntryGrid->SetMinSize(mapEntryGrid->GetSize());
+
+	if (static_cast<unsigned int>(mapEntryGrid->GetNumberRows()) > colorMap.size())
+		mapEntryGrid->DeleteRows(colorMap.size(), minRowCount - colorMap.size());
 }
 
 void ColorMapDialog::OnAddButtonClickEvent(wxCommandEvent& WXUNUSED(event))
@@ -66,12 +84,35 @@ void ColorMapDialog::OnAddButtonClickEvent(wxCommandEvent& WXUNUSED(event))
 
 void ColorMapDialog::OnRemoveButtonClickEvent(wxCommandEvent& WXUNUSED(event))
 {
-	const auto selectedCells(mapEntryGrid->GetSelectedCells());
-	if (selectedCells.Count() == 0)
+	auto selectedRows(mapEntryGrid->GetSelectedRows());
+	if (selectedRows.GetCount() == 0)
 		return;
 
-	// TODO:  Implement
-	// Remove from list and also colorMap
+	if (mapEntryGrid->GetNumberRows() - selectedRows.GetCount() < 2)
+	{
+		wxMessageBox(_T("Must have at least two entries"));
+		return;
+	}
+
+	selectedRows.Sort([](int* a, int* b)
+	{
+		if (*a < *b)
+			return 1;
+		else if (*a > *b)
+			return -1;
+		return 0;
+	});
+
+	for (auto& row : selectedRows)
+	{
+		double value;
+		if (!mapEntryGrid->GetCellValue(row, 0).ToDouble(&value))
+		{
+			assert(false);
+		}
+		colorMap.erase(GetBestMapEntry(value));
+		mapEntryGrid->DeleteRows(row);
+	}
 }
 
 void ColorMapDialog::OnGridCellDoubleClickEvent(wxGridEvent& event)
@@ -82,32 +123,68 @@ void ColorMapDialog::OnGridCellDoubleClickEvent(wxGridEvent& event)
 		return;
 	}
 
-	// TODO:  Show color picker and update:
-	// 1. cell bg color
-	// 2. entry in color map
-}
+	wxColourData colorData;
+	colorData.SetColour(mapEntryGrid->GetCellBackgroundColour(event.GetRow(), 1));
 
-void ColorMapDialog::OnGridCellChangeEvent(wxGridEvent& event)
-{
-	assert(event.GetCol() == 0);
+	wxColourDialog dialog(this, &colorData);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
 
-	double newValue;
-	if (mapEntryGrid->GetCellValue(event.GetRow(), 0).ToDouble(&newValue))
+	double magnitude;
+	if (!mapEntryGrid->GetCellValue(event.GetRow(), 0).ToDouble(&magnitude))
 	{
-		wxMessageBox(_T("Failed to parse magnitude value."));
-		event.Veto();// TODO:  Test
+		wxMessageBox(_T("Failed to parse magnitude value"));
 		return;
 	}
 
-	// TODO:  Change correct item in colorMap
+	colorMap.erase(GetBestMapEntry(magnitude));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(magnitude, dialog.GetColourData().GetColour()));
+	mapEntryGrid->SetCellBackgroundColour(event.GetRow(), 1, dialog.GetColourData().GetColour());
+}
+
+SonogramGenerator::ColorMap::iterator ColorMapDialog::GetBestMapEntry(const double& value)
+{
+	double magnitudeError(2.0);
+	SonogramGenerator::ColorMap::iterator bestMatch(colorMap.end());
+	auto it = colorMap.begin();
+	for (; it != colorMap.end(); ++it)
+	{
+		if (fabs(it->magnitude - value) < magnitudeError)
+		{
+			magnitudeError = fabs(it->magnitude - value);
+			bestMatch = it;
+		}
+	}
+
+	return bestMatch;
+}
+
+void ColorMapDialog::OnGridCellChangingEvent(wxGridEvent& event)
+{
+	assert(event.GetCol() == 0);
+
+	double oldValue, newValue;
+	if (!mapEntryGrid->GetCellValue(event.GetRow(), 0).ToDouble(&oldValue))
+	{
+		wxMessageBox(_T("Failed to parse old magnitude value."));
+		event.Veto();
+		return;
+	}
+	else if (!event.GetString().ToDouble(&newValue))
+	{
+		wxMessageBox(_T("Failed to parse new magnitude value."));
+		event.Veto();
+		return;
+	}
+
+	colorMap.erase(GetBestMapEntry(oldValue));
+	colorMap.insert(SonogramGenerator::MagnitudeColor(newValue, mapEntryGrid->GetCellBackgroundColour(event.GetRow(), 1)));
 }
 
 void ColorMapDialog::PopulateInitialMap()
 {
-	mapEntryGrid->BeginBatch();
 	for (const auto& entry : colorMap)
 		AddEntryToGrid(entry);
-	mapEntryGrid->EndBatch();
 }
 
 void ColorMapDialog::AddEntryToGrid(const SonogramGenerator::MagnitudeColor& entry)
@@ -118,7 +195,8 @@ void ColorMapDialog::AddEntryToGrid(const SonogramGenerator::MagnitudeColor& ent
 		double value;
 		if (!mapEntryGrid->GetCellValue(row, 0).ToDouble(&value))
 		{
-			// TODO:  Handle error
+			wxMessageBox(_T("Failed to add color map entry to grid."));
+			return;
 		}
 		else if (entry.magnitude < value)
 			break;

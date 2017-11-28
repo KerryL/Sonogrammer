@@ -35,13 +35,15 @@ private:
 	void OnAddButtonClickEvent(wxCommandEvent& event);
 	void OnRemoveButtonClickEvent(wxCommandEvent& event);
 	void OnGridCellDoubleClickEvent(wxGridEvent& event);
-	void OnGridCellChangeEvent(wxGridEvent& event);
+	void OnGridCellChangingEvent(wxGridEvent& event);
 
 	enum EventIDs
 	{
 		idAddButton = wxID_HIGHEST + 200,
 		idRemoveButton
 	};
+
+	SonogramGenerator::ColorMap::iterator GetBestMapEntry(const double& value);
 
 	// For the event table
 	DECLARE_EVENT_TABLE();
