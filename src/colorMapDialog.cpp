@@ -75,9 +75,47 @@ void ColorMapDialog::CreateControls()
 
 void ColorMapDialog::OnAddButtonClickEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Make this smarter - better guess at color and magnitude, and insert based on selected item in box?
-	// At the very least, don't allow a magnitude that's already been selected
-	SonogramGenerator::MagnitudeColor entry(1.0, wxColor(0, 0, 0));
+	const double minExistingMagnitude(colorMap.begin()->magnitude);
+	const double maxExistingMagnitude(colorMap.rbegin()->magnitude);
+
+	const double epsilon(1.0e-6);
+	double assumedNewMagnitude;
+	wxColor assumedColor;
+	if (minExistingMagnitude > epsilon)
+	{
+		assumedNewMagnitude = 0.0;
+		assumedColor = wxColor(255, 255, 255);
+	}
+	else if (maxExistingMagnitude < 1.0 - epsilon)
+	{
+		assumedNewMagnitude = 1.0;
+		assumedColor = wxColor(0, 0, 0);
+	}
+	else
+	{
+		auto itLower(colorMap.begin());
+		auto itUpper(++colorMap.begin());
+		auto largestGapLowerIterator(itLower);
+		auto largestGapUpperIterator(itUpper);
+		double largestGap(0.0);
+		for (; itUpper != colorMap.end(); ++itUpper)
+		{
+			if (itUpper->magnitude - itLower->magnitude > largestGap)
+			{
+				largestGap = itUpper->magnitude - itLower->magnitude;
+				largestGapLowerIterator = itLower;
+				largestGapUpperIterator = itUpper;
+			}
+			++itLower;
+		}
+
+		assumedNewMagnitude = 0.5 * (largestGapUpperIterator->magnitude + largestGapLowerIterator->magnitude);
+		assumedColor = SonogramGenerator::GetInterpolatedColor(
+			largestGapLowerIterator->color, largestGapLowerIterator->magnitude,
+			largestGapUpperIterator->color, largestGapUpperIterator->magnitude, assumedNewMagnitude);
+	}
+
+	SonogramGenerator::MagnitudeColor entry(assumedNewMagnitude, assumedColor);
 	AddEntryToGrid(entry);
 	colorMap.insert(entry);
 }

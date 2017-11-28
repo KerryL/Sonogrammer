@@ -49,6 +49,9 @@ public:
 	typedef std::set<MagnitudeColor> ColorMap;
 	wxImage GetImage(const ColorMap& colorMap) const;
 
+	static wxColor GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
+		const wxColor& upperColor, const double& upperValue, const double& value);
+
 private:
 	const SoundData& soundData;
 	const FFTParameters parameters;
@@ -65,8 +68,6 @@ private:
 
 	unsigned int ComputeNumberOfSlices() const;
 
-	static wxColor GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
-		const wxColor& upperColor, const double& upperValue, const double& value);
 	static void GetHSV(const wxColor& c, double& hue, double& saturation, double& value);
 	static wxColor ColorFromHSV(const double& hue, const double& saturation, const double& value);
 };

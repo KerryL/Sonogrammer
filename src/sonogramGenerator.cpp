@@ -86,8 +86,8 @@ wxColor SonogramGenerator::GetInterpolatedColor(const wxColor& lowerColor, const
 		resultHue = minHue + (maxHue - minHue) * value / (upperValue - lowerValue);
 
 	return ColorFromHSV(resultHue,
-		lowerS + (upperS - lowerS) * value / (upperValue - lowerValue),
-		lowerV + (upperV - lowerV) * value / (upperValue - lowerValue));
+		lowerS + (upperS - lowerS) * (upperValue - value) / (upperValue - lowerValue),
+		lowerV + (upperV - lowerV) * (upperValue - value) / (upperValue - lowerValue));
 }
 
 DatasetType SonogramGenerator::GetScaledMagnitude(const DatasetType& magnitude) const
