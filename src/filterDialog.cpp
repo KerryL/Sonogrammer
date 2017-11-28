@@ -134,13 +134,12 @@ void FilterDialog::CreateControls()
 	mainSizer->Add(CreateTransferFunctionControls(), 1, wxGROW);
 
 	mainSizer->AddSpacer(10);
-	wxSizer *buttons = CreateButtonSizer(wxOK | wxCANCEL);
+	wxSizer *buttons(CreateButtonSizer(wxOK | wxCANCEL));
 	if (buttons)
 		mainSizer->Add(buttons, 0, wxALIGN_CENTER_HORIZONTAL);
 
 	SetSizerAndFit(topSizer);
-
-	Center();
+	CenterOnParent();
 }
 
 //=============================================================================

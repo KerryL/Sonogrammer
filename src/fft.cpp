@@ -73,7 +73,7 @@ std::unique_ptr<Dataset2D> FastFourierTransform::ComputeFFT(
 	const DatasetType sampleRate(static_cast<DatasetType>(1.0) / data.GetAverageDeltaX());// [Hz]
 
 	if (subtractMean)
-		data.operator-(data.ComputeYMean());
+		data -= data.ComputeYMean();
 
 	if (windowSize == 0)
 		windowSize = static_cast<unsigned int>(
