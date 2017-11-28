@@ -178,6 +178,7 @@ void ColorMapDialog::OnGridCellDoubleClickEvent(wxGridEvent& event)
 	colorMap.erase(GetBestMapEntry(magnitude));
 	colorMap.insert(SonogramGenerator::MagnitudeColor(magnitude, dialog.GetColourData().GetColour()));
 	mapEntryGrid->SetCellBackgroundColour(event.GetRow(), 1, dialog.GetColourData().GetColour());
+	mapEntryGrid->Refresh();
 }
 
 SonogramGenerator::ColorMap::iterator ColorMapDialog::GetBestMapEntry(const double& value)
