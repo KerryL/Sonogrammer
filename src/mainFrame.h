@@ -72,6 +72,7 @@ private:
 	wxButton* pauseButton;
 	wxButton* playButton;
 	wxButton* stopButton;
+	wxStaticText* currentTimeText;
 	wxCheckBox* includeFiltersInPlayback;
 
 	wxSlider* resolutionSlider;
@@ -168,6 +169,8 @@ private:
 
 	void SetControlEnablesOnPlay();
 	void SetControlEnablesOnStop();
+
+	void UpdateAudioPosition(const float& position);
 
 	DECLARE_EVENT_TABLE();
 };

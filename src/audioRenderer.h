@@ -36,7 +36,8 @@ public:
 	enum class InfoType
 	{
 		Error,
-		Stopped
+		Stopped,
+		PositionUpdate
 	};
 
 private:
@@ -59,6 +60,7 @@ private:
 	void RenderLoop();
 	void SendStoppedEvent();
 	void SendErrorEvent(const std::string& errorString);
+	void SendPositionUpdateEvent(const float& position);
 };
 
 #endif// AUDIO_RENDERER_H_

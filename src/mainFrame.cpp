@@ -192,10 +192,17 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	pauseButton = new wxButton(sizer->GetStaticBox(), idPauseButton, _T("Pause"));
 	playButton = new wxButton(sizer->GetStaticBox(), idPlayButton, _T("Play"));
 	stopButton = new wxButton(sizer->GetStaticBox(), idStopButton, _T("Stop"));
+	currentTimeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), wxID_ANY, _T("Include Filters in Playback"));
+
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(stopButton, wxSizerFlags().Border(wxALL, 5));
+
+	wxSizer* timeSizer(new wxBoxSizer(wxHORIZONTAL));
+	sizer->Add(timeSizer, wxSizerFlags().Border(wxALL, 5));
+	timeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Position")));
+	timeSizer->Add(currentTimeText, wxSizerFlags().Border(wxLEFT, 5));
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
 
 	sizer->AddSpacer(15);
@@ -547,6 +554,7 @@ void MainFrame::StopPlayingAudio()
 {
 	audioRenderer.Stop();
 	SetControlEnablesOnStop();
+	currentTimeText->SetLabel(wxString());
 }
 
 void MainFrame::SetControlEnablesOnPlay()
@@ -555,6 +563,8 @@ void MainFrame::SetControlEnablesOnPlay()
 	playButton->Enable(false);
 	pauseButton->Enable();
 	stopButton->Enable();
+
+	// TODO:  make playback marker visible
 }
 
 void MainFrame::SetControlEnablesOnStop()
@@ -563,6 +573,8 @@ void MainFrame::SetControlEnablesOnStop()
 	playButton->Enable();
 	pauseButton->Enable(false);
 	stopButton->Enable(false);
+
+	// TODO:  hide make playback marker
 }
 
 void MainFrame::HandleNewAudioFile()
@@ -767,6 +779,7 @@ void MainFrame::DisableFileDependentControls()
 
 void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
 {
+	long positionAsLong(event.GetExtraLong());
 	switch (static_cast<AudioRenderer::InfoType>(event.GetInt()))
 	{
 	case AudioRenderer::InfoType::Error:
@@ -775,6 +788,10 @@ void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
 
 	case AudioRenderer::InfoType::Stopped:
 		StopPlayingAudio();
+		break;
+
+	case AudioRenderer::InfoType::PositionUpdate:
+		UpdateAudioPosition(*reinterpret_cast<const float*>(&positionAsLong));
 		break;
 
 	default:
@@ -786,6 +803,13 @@ void MainFrame::OnClose(wxCloseEvent& event)
 {
 	StopPlayingAudio();
 	event.Skip();
+}
+
+void MainFrame::UpdateAudioPosition(const float& position)
+{
+	const int minutes(static_cast<int>(position / 60.0));
+	currentTimeText->SetLabel(wxString::Format(_T("%02d:%04.1f"), minutes, position - minutes * 60.0));
+	// TODO:  Also do playback marker
 }
 
 void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent)

@@ -107,7 +107,9 @@ void AudioRenderer::RenderLoop()
 		SendErrorEvent(ss.str());
 		return;
 	}
-		
+
+	const float timePerByte(1.0 / (sizeof(float) * desiredSpec.freq));// [sec/byte]
+	const uint32_t initialQueueSize(SDL_GetQueuedAudioSize(outputDevice));
 
 	while (state != State::Idle)
 	{
@@ -120,8 +122,10 @@ void AudioRenderer::RenderLoop()
 		else if (state == State::Playing)
 		{
 			SDL_PauseAudioDevice(outputDevice, 0);
-			if (SDL_GetQueuedAudioSize(outputDevice) == 0)
+			const uint32_t queueSize(SDL_GetQueuedAudioSize(outputDevice));
+			if (queueSize == 0)
 				break;
+			SendPositionUpdateEvent((initialQueueSize - queueSize) * timePerByte);
 		}
 	}
 
@@ -141,5 +145,15 @@ void AudioRenderer::SendErrorEvent(const std::string& errorString)
 	wxCommandEvent* event(new wxCommandEvent(RenderThreadInfoEvent, wxID_ANY));
 	event->SetString(errorString);
 	event->SetInt(static_cast<int>(InfoType::Error));
+	appEventHandler->QueueEvent(event);
+}
+
+void AudioRenderer::SendPositionUpdateEvent(const float& position)
+{
+	assert(sizeof(float) == sizeof(long));
+
+	wxCommandEvent* event(new wxCommandEvent(RenderThreadInfoEvent, wxID_ANY));
+	event->SetExtraLong(*reinterpret_cast<const long*>(&position));
+	event->SetInt(static_cast<int>(InfoType::PositionUpdate));
 	appEventHandler->QueueEvent(event);
 }
