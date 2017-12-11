@@ -108,7 +108,7 @@ void AudioRenderer::RenderLoop()
 		return;
 	}
 
-	const float timePerByte(1.0 / (sizeof(float) * desiredSpec.freq));// [sec/byte]
+	const float timePerByte(1.0 / (sizeof(float) * obtainedSpec.freq * obtainedSpec.channels));// [sec/byte]
 	const uint32_t initialQueueSize(SDL_GetQueuedAudioSize(outputDevice));
 
 	while (state != State::Idle)

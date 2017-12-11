@@ -329,6 +329,7 @@ void MainFrame::SetProperties()
 	// Default color map
 	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
 	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
+	sonogramImage->SetMarkerColor(ComputeContrastingMarkerColor(colorMap));
 
 #ifdef __WXMSW__
 	//SetIcon(wxIcon(_T("ICON_ID_MAIN"), wxBITMAP_TYPE_ICO_RESOURCE));
@@ -467,8 +468,28 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 		return;
 
 	colorMap = dialog.GetColorMap();
+	sonogramImage->SetMarkerColor(ComputeContrastingMarkerColor(colorMap));
 	assert(colorMap.size() > 1);
 	UpdateSonogram();
+}
+
+wxColor MainFrame::ComputeContrastingMarkerColor(const SonogramGenerator::ColorMap& m)
+{
+	double minMag(1.0);
+	wxColor minColor;
+	for (const auto& c : m)
+	{
+		if (c.magnitude < minMag)
+		{
+			minColor = c.color;
+			minMag = c.magnitude;
+		}
+	}
+
+	const double perceivedLuminance((0.299 * minColor.Red() + 0.587 * minColor.Green() + 0.114 * minColor.Blue()) / 255.0);
+	if (perceivedLuminance < 0.5)
+		return wxColor(255, 255, 255);// black
+	return wxColor(0, 0, 0);// white
 }
 
 void MainFrame::ApplyFilters()
@@ -564,7 +585,7 @@ void MainFrame::SetControlEnablesOnPlay()
 	pauseButton->Enable();
 	stopButton->Enable();
 
-	// TODO:  make playback marker visible
+	sonogramImage->ShowTimeCursor();
 }
 
 void MainFrame::SetControlEnablesOnStop()
@@ -574,7 +595,7 @@ void MainFrame::SetControlEnablesOnStop()
 	pauseButton->Enable(false);
 	stopButton->Enable(false);
 
-	// TODO:  hide make playback marker
+	sonogramImage->HideTimeCursor();
 }
 
 void MainFrame::HandleNewAudioFile()
@@ -809,7 +830,23 @@ void MainFrame::UpdateAudioPosition(const float& position)
 {
 	const int minutes(static_cast<int>(position / 60.0));
 	currentTimeText->SetLabel(wxString::Format(_T("%02d:%04.1f"), minutes, position - minutes * 60.0));
-	// TODO:  Also do playback marker
+
+	double minTime, maxTime;
+	if (!timeMinText->GetValue().ToDouble(&minTime))
+	{
+		wxMessageBox(_T("Failed to parse min time"));
+		return;
+	}
+	if (!timeMaxText->GetValue().ToDouble(&maxTime))
+	{
+		wxMessageBox(_T("Failed to parse max time"));
+		return;
+	}
+
+	if (position < minTime || position > maxTime)
+		sonogramImage->UpdateTimeCursor(0.0);
+	else
+		sonogramImage->UpdateTimeCursor((position - minTime) / (maxTime - minTime));
 }
 
 void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent)

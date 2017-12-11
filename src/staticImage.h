@@ -20,6 +20,11 @@ public:
 	void SetImage(wxImage&& newImage);
 	void Reset();
 	void ExportToFile(const wxString& fileName) const;
+
+	void ShowTimeCursor();
+	void HideTimeCursor();
+	void UpdateTimeCursor(const double& fraction);
+	void SetMarkerColor(const wxColor& c);
 	
 private:
 	MainFrame& mainFrame;
@@ -27,6 +32,10 @@ private:
 	wxBitmap resizedImage;
 	int width = -1;
 	int height = -1;
+
+	wxColor markerColor = wxColor(255, 255, 255);
+	bool cursorVisible = false;
+	double cursorPosition;
 
 	void OnPaint(wxPaintEvent& event);
 	void OnSize(wxSizeEvent& event);

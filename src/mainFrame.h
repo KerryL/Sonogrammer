@@ -153,6 +153,8 @@ private:
 
 	SonogramGenerator::ColorMap colorMap;
 
+	static wxColor ComputeContrastingMarkerColor(const SonogramGenerator::ColorMap& m);
+
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;

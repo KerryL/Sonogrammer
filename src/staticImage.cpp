@@ -63,6 +63,17 @@ void StaticImage::Render(wxDC& dc)
 	}
 	
 	dc.DrawBitmap(resizedImage, 0, 0, false);
+
+	if (cursorVisible && cursorPosition > 0.0)
+	{
+		const int lineWidth(1);
+		dc.SetPen(wxPen(markerColor, lineWidth));
+
+		const int linePosition(newWidth * cursorPosition);
+		wxPoint bottomPoint(linePosition, 0);
+		wxPoint topPoint(linePosition, newHeight);
+		dc.DrawLine(bottomPoint, topPoint);
+	}
 }
 
 void StaticImage::ExportToFile(const wxString& fileName) const
@@ -81,4 +92,27 @@ void StaticImage::OnMouseMove(wxMouseEvent& event)
 void StaticImage::OnMouseLeaveWindow(wxMouseEvent& WXUNUSED(event))
 {
 	mainFrame.UpdateSonogramCursorInfo(-1.0, -1.0);
+}
+
+void StaticImage::ShowTimeCursor()
+{
+	cursorVisible = true;
+	cursorPosition = 0.0;
+}
+
+void StaticImage::HideTimeCursor()
+{
+	cursorVisible = false;
+	Refresh();
+}
+
+void StaticImage::UpdateTimeCursor(const double& fraction)
+{
+	cursorPosition = fraction;
+	Refresh();
+}
+
+void StaticImage::SetMarkerColor(const wxColor& c)
+{
+	markerColor = c;
 }
