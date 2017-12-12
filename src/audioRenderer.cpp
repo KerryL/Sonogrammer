@@ -150,7 +150,7 @@ void AudioRenderer::SendErrorEvent(const std::string& errorString)
 
 void AudioRenderer::SendPositionUpdateEvent(const float& position)
 {
-	assert(sizeof(float) == sizeof(long));
+	assert(sizeof(float) <= sizeof(long));
 
 	wxCommandEvent* event(new wxCommandEvent(RenderThreadInfoEvent, wxID_ANY));
 	event->SetExtraLong(*reinterpret_cast<const long*>(&position));

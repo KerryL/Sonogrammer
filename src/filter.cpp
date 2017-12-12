@@ -21,7 +21,7 @@
 // Description:		Constructor for the Filter class.
 //
 // Input Arguments:
-//		_sampleRate		= const double& specifying the sampling rate in Hz
+//		sampleRate		= const double& specifying the sampling rate in Hz
 //
 // Output Arguments:
 //		None
@@ -49,7 +49,12 @@ Filter& Filter::operator=(const Filter& f)
 	if (this == &f)
 		return *this;
 
-	assert(f.sampleRate == sampleRate);
+	sampleRate = f.sampleRate;
+
+	mY = f.mY;
+	mU = f.mU;
+	mA = f.mA;
+	mB = f.mB;
 
 	return *this;
 }
@@ -59,7 +64,7 @@ Filter& Filter::operator=(Filter&& f)
 	if (this == &f)
 		return *this;
 
-	assert(f.sampleRate == sampleRate);
+	sampleRate =f. sampleRate;
 
 	mY = std::move(f.mY);
 	mU = std::move(f.mU);
@@ -145,7 +150,6 @@ void Filter::GenerateCoefficients(const std::vector<double> &numerator,
 //=============================================================================
 // Class:			Filter
 // Function:		AssembleZExpression
-//
 // Description:		Assembles the z-domain expression equivalent to the s-domain
 //					coefficients provided.
 //
@@ -166,7 +170,7 @@ std::string Filter::AssembleZExpression(
 	const unsigned int &highestPower) const
 {
 	std::ostringstream ss;
-	ss << "(" << 1.0 / sampleRate << "*(1+z^-1))";
+	ss << "(" << std::fixed << 1.0 / sampleRate << "*(1+z^-1))";
 	std::string posBilinTerm(ss.str()), negBilinTerm("(2*(1-z^-1))");
 	std::string result;
 
@@ -177,7 +181,7 @@ std::string Filter::AssembleZExpression(
 			continue;
 
 		std::ostringstream term;
-		term << coefficients[i];
+		term << std::fixed << coefficients[i];
 		if (!result.empty() && coefficients[i] > 0.0)
 			result.append("+");
 		result.append(term.str());

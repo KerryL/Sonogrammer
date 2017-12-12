@@ -94,7 +94,7 @@ private:
 	std::vector<double> mY;
 	std::vector<double> mU;
 
-	const double sampleRate;// [Hz]
+	double sampleRate;// [Hz]
 
 	void ResizeArrays(const unsigned int &inSize, const unsigned int &outSize);
 	void ShiftArray(std::vector<double>& s) const;
