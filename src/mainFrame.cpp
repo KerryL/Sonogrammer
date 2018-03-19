@@ -554,6 +554,12 @@ void MainFrame::PlayButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 		return;
 	}
 
+	if (endTime <= startTime)
+	{
+		wxMessageBox(_T("End time must be greater than start time."));
+		return;
+	}
+
 	if (includeFiltersInPlayback->GetValue())
 		audioRenderer.Play(*filteredSoundData->ExtractSegment(startTime, endTime));
 	else
@@ -702,6 +708,9 @@ void MainFrame::UpdateSonogram()
 		return;
 	}
 
+	if (endTime <= startTime)
+		return;// Could be in the middle of typing a number
+
 	SonogramGenerator::FFTParameters parameters;
 	parameters.windowFunction = static_cast<FastFourierTransform::WindowType>(windowComboBox->GetSelection());
 	parameters.windowSize = GetWindowSize();
@@ -729,6 +738,9 @@ void MainFrame::UpdateSonogram()
 		wxMessageBox(_T("Failed to parse maximum frequency."));
 		return;
 	}
+
+	if (parameters.maxFrequency <= parameters.minFrequency)
+		return;// Could be in the middle of typing a number -> TODO:  Best approach may be to start a timer upon encountering an invalid number of conflicting inputs.  After 2 or 3 seconds, if not corrected (or if user starts typing in another box?), then disply the error message.
 
 	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
 	sonogramImage->SetImage(generator.GetImage(colorMap));
