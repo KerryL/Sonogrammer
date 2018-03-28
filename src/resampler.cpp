@@ -83,6 +83,11 @@ bool Resampler::Initialize(const int& inputSampleRate, const uint64_t& inputChan
 	resampledFrame->format = outputFormat;
 	resampledFrame->sample_rate = outputSampleRate;
 
+	if (av_sample_fmt_is_planar(outputFormat) == 0)
+		numberOfOutputPlanes = 1;
+	else
+		numberOfOutputPlanes = outputChannelCount;
+
 	initialized = true;
 	return true;
 }
@@ -98,7 +103,7 @@ AVFrame* Resampler::Resample(const AVFrame* frame)
 	}
 	else
 	{
-		assert(!sampleRatesMatch && "Shouldn't be calling Resample() without a valid frame unless we're flushing the resampler due to mismatched sample rates");
+		assert(!sampleRatesMatch && "Shouldn't call Resample() without a valid frame unless we're flushing the resampler due to mismatched sample rates");
 		// If the sample rate has changed, we need to call swr_convert again with NULL input in order to get all converted samples
 		if (!CallResampler(nullptr, 0, false))
 			return nullptr;
@@ -110,7 +115,6 @@ AVFrame* Resampler::Resample(const AVFrame* frame)
 bool Resampler::CallResampler(const uint8_t** rawData, const unsigned int inputSampleCount,
 	const bool& resetSampleCount)
 {
-	assert(swr_get_out_samples(context, inputSampleCount) <= frameSize);// TODO:  Implement support for buffered input
 	const int sampleCount(swr_convert(context, audioOutBuffer, static_cast<int>(maxOutputSampleCount),
 		rawData, inputSampleCount));
 	if (LibCallWrapper::FFmpegErrorCheck(sampleCount, "Failed to convert audio format"))
@@ -138,9 +142,9 @@ bool Resampler::CallResampler(const uint8_t** rawData, const unsigned int inputS
 		resampledFrame->linesize[0] += usedOutputBufferSize;
 	}
 
-	unsigned int i;
-	for (i = 0; i < 8; ++i)
-		resampledFrame->data[i] = audioOutBuffer[i];// TODO:  Is this a memory leak?
+	int i;
+	for (i = 0; i < numberOfOutputPlanes; ++i)
+		resampledFrame->data[i] = audioOutBuffer[i];
 
 	return true;
 }

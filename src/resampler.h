@@ -6,6 +6,10 @@
 #ifndef _RESAMPLER_H_
 #define _RESAMPLER_H_
 
+// Standard C++ headers
+#include <ostream>
+#include <cstdint>
+
 #ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -20,10 +24,6 @@ extern "C"
 #ifdef _WIN32
 #pragma warning(pop)
 #endif// _WIN32
-
-// Standard C++ headers
-#include <ostream>
-#include <cstdint>
 
 class Resampler
 {
@@ -42,15 +42,16 @@ private:
 	bool initialized = false;
 	SwrContext* context = nullptr;
 
-	bool sampleRatesMatch;
+	bool sampleRatesMatch = true;
 	int maxOutputSampleCount = 0;
 	uint8_t** audioOutBuffer = nullptr;
 	AVFrame* resampledFrame;
 
-	int outputChannelCount;
-	int outputFrequency;
-	int inputFrequency;
-	AVSampleFormat outputFormat;
+	int outputChannelCount = 0;
+	int outputFrequency = 0;
+	int inputFrequency = 0;
+	AVSampleFormat outputFormat = AV_SAMPLE_FMT_NONE;
+	int numberOfOutputPlanes = 0;
 
 	static const int frameSize;
 
