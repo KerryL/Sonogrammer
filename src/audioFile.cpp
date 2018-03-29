@@ -357,8 +357,17 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	int returnCode(0);
 	while (returnCode != AVERROR_EOF)
 	{
-		if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_packet(&codecContext, &packet),
-			"Error sending packet from file to decoder"))
+		returnCode = avcodec_send_packet(&codecContext, &packet);
+		if (returnCode == AVERROR_INVALIDDATA)
+		{
+			// Do nothing - possibilities are:
+			// 1.  codec not opened,
+			// 2.  we're sending packet to an encoder instead of a decoder, or
+			// 3.  codec requires a flush
+			// For development cases 1 and 2 might apply, but at this stage we'll assume
+			// the codec requires a flush and not treat this as a failure.
+		}
+		else if (LibCallWrapper::FFmpegErrorCheck(returnCode, "Error sending packet from file to decoder"))
 		{
 			av_frame_free(&frame);
 			return false;
