@@ -404,6 +404,8 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 		}
 	}
 
+	ZeroFillUnusedData();
+
 	av_frame_free(&frame);
 	return true;
 }
@@ -411,7 +413,20 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 void AudioFile::AppendFrame(const AVFrame& frame)
 {
 	const float* floatData(reinterpret_cast<float*>(frame.data[0]));// Because we resampled to FLTP
-	std::copy(floatData, floatData + frame.linesize[0] / sizeof(float),
-		data->data.GetY().begin() + dataInsertionPoint);
+	const size_t samplesToAdd(std::min(static_cast<size_t>(frame.nb_samples), data->GetData().GetNumberOfPoints() - dataInsertionPoint));
+	std::copy(floatData, floatData + samplesToAdd, data->GetData().GetY().begin() + dataInsertionPoint);
+
+	if (samplesToAdd < static_cast<size_t>(frame.nb_samples))
+	{
+		data->GetData().GetY().insert(data->GetData().GetY().end(), floatData + samplesToAdd, floatData + frame.nb_samples);
+		data->GetData().GetX().resize(data->GetData().GetY().size());
+	}
 	dataInsertionPoint += frame.nb_samples;
+}
+
+void AudioFile::ZeroFillUnusedData()
+{
+	unsigned int i;
+	for (i = dataInsertionPoint; i < data->GetData().GetNumberOfPoints(); ++i)
+		data->GetData().GetY()[i] = 0.0;
 }
