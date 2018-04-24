@@ -118,6 +118,7 @@ void SonogramGenerator::ComputeFrequencyInformation()
 		if (startTime >= soundData.GetDuration())
 		{
 			sliceFrequency = std::vector<DatasetType>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			minMagnitude = 0.0;
 			startTime += startIncrement;
 			continue;
 		}
@@ -126,12 +127,12 @@ void SonogramGenerator::ComputeFrequencyInformation()
 		if (slice.GetNumberOfPoints() < parameters.windowSize)
 		{
 			sliceFrequency = std::vector<DatasetType>(maxFrequencyIndex - minFrequencyIndex, 0.0);
+			minMagnitude = 0.0;
 			startTime += startIncrement;
 			continue;
 		}
 
 		startTime += startIncrement;
-
 		if (minFrequencyIndex == 0 && maxFrequencyIndex == slice.GetNumberOfPoints() - 1)
 			sliceFrequency = std::move(ComputeTimeSliceFFT(slice));
 		else

@@ -813,6 +813,7 @@ void MainFrame::DisableFileDependentControls()
 void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
 {
 	long positionAsLong(event.GetExtraLong());
+	const float* positionAsFloat(reinterpret_cast<const float*>(&positionAsLong));
 	switch (static_cast<AudioRenderer::InfoType>(event.GetInt()))
 	{
 	case AudioRenderer::InfoType::Error:
@@ -824,7 +825,7 @@ void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
 		break;
 
 	case AudioRenderer::InfoType::PositionUpdate:
-		UpdateAudioPosition(*reinterpret_cast<const float*>(&positionAsLong));
+		UpdateAudioPosition(*positionAsFloat);
 		break;
 
 	default:
