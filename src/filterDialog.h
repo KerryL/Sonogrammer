@@ -45,9 +45,9 @@ struct FilterParameters
 
 	unsigned int order = 2;///< The order of the filter.
 
-	double cutoffFrequency = 255.0;///< Filter cutoff frequency. <b>[Hz]</b>
+	double cutoffFrequency = 250.0;///< Filter cutoff frequency. <b>[Hz]</b>
 	double dampingRatio = 1.0;///< Filter damping ratio.
-	double width = 255.0;///< Filter width. <b>[Hz]</b>
+	double width = 250.0;///< Filter width. <b>[Hz]</b>
 
 	wxString numerator;///< Numerator of transfer function.
 	wxString denominator;///< Denominator of transfer function.
