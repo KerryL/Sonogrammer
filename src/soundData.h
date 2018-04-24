@@ -30,7 +30,8 @@ public:
 
 	inline DatasetType GetSampleRate() const { return sampleRate; }
 	inline DatasetType GetDuration() const { return duration; }
-	inline Dataset2D GetData() const { return data; }
+	inline const Dataset2D& GetData() const { return data; }
+	inline Dataset2D& GetData() { return data; }
 
 private:
 	friend AudioFile;
