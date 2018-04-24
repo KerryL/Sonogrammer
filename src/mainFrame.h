@@ -33,6 +33,8 @@ class MainFrame : public wxFrame
 public:
 	MainFrame();
 
+	void LoadFile(const wxString& fileName);
+
 	void UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent);
 
 private:

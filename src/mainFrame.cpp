@@ -12,6 +12,7 @@
 #include "staticImage.h"
 #include "filterDialog.h"
 #include "colorMapDialog.h"
+#include "dropTarget.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
@@ -325,6 +326,7 @@ void MainFrame::SetProperties()
 	SetTitle(SonogrammerApp::title);
 	SetName(SonogrammerApp::internalName);
 	Center();
+	SetDropTarget(new DropTarget(*this));
 
 	// Default color map
 	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
@@ -349,7 +351,12 @@ void MainFrame::LoadAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (dialog.ShowModal() != wxID_OK)
 		return;
 
-	audioFileName->ChangeValue(dialog.GetPath());
+	LoadFile(dialog.GetPath());
+}
+
+void MainFrame::LoadFile(const wxString& fileName)
+{
+	audioFileName->ChangeValue(fileName);
 	HandleNewAudioFile();
 }
 
