@@ -41,7 +41,7 @@ struct FilterParameters
 
 	/// Flag indicating if the filter should be computed using Butterworth
 	/// coefficients.
-	bool butterworth = false;
+	bool butterworth = true;
 
 	unsigned int order = 2;///< The order of the filter.
 
