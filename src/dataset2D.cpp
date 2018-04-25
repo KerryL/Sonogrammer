@@ -31,7 +31,7 @@
 // Description:		Constructor for the Dataset class.
 //
 // Input Arguments:
-//		numberOfPoints = const unsigned int &
+//		numberOfPoints = const size_t &
 //
 // Output Arguments:
 //		None
@@ -40,7 +40,7 @@
 //		None
 //
 //=============================================================================
-Dataset2D::Dataset2D(const unsigned int &numberOfPoints)
+Dataset2D::Dataset2D(const size_t &numberOfPoints)
 {
 	Resize(numberOfPoints);
 }
@@ -74,7 +74,7 @@ void Dataset2D::Reverse()
 //					resizing.
 //
 // Input Arguments:
-//		numberOfPoints = const unsigned int &
+//		numberOfPoints = const size_t&
 //
 // Output Arguments:
 //		None
@@ -83,7 +83,7 @@ void Dataset2D::Reverse()
 //		None
 //
 //=============================================================================
-void Dataset2D::Resize(const unsigned int &numberOfPoints)
+void Dataset2D::Resize(const size_t& numberOfPoints)
 {
 	mXData.resize(numberOfPoints);
 	mYData.resize(numberOfPoints);
@@ -109,7 +109,7 @@ Dataset2D& Dataset2D::operator+=(const Dataset2D &target)
 {
 	assert(mYData.size() == target.mYData.size());
 
-	unsigned int i;
+	size_t i;
 	for (i = 0; i < mYData.size(); ++i)
 		mYData[i] += target.mYData[i];
 
@@ -136,7 +136,7 @@ Dataset2D& Dataset2D::operator-=(const Dataset2D &target)
 {
 	assert(mYData.size() == target.mYData.size());
 
-	unsigned int i;
+	size_t i;
 	for (i = 0; i < mYData.size(); ++i)
 		mYData[i] -= target.mYData[i];
 
@@ -163,7 +163,7 @@ Dataset2D& Dataset2D::operator*=(const Dataset2D &target)
 {
 	assert(mYData.size() == target.mYData.size());
 
-	unsigned int i;
+	size_t i;
 	for (i = 0; i < mYData.size(); ++i)
 		mYData[i] *= target.mYData[i];
 
@@ -190,7 +190,7 @@ Dataset2D& Dataset2D::operator/=(const Dataset2D &target)
 {
 	assert(mYData.size() == target.mYData.size());
 
-	unsigned int i;
+	size_t i;
 	for (i = 0; i < mYData.size(); ++i)
 		mYData[i] /= target.mYData[i];
 
@@ -504,7 +504,7 @@ const Dataset2D Dataset2D::operator/(const DatasetType &target) const
 const Dataset2D Dataset2D::operator%(const DatasetType &target) const
 {
 	Dataset2D result(*this);
-	unsigned int i;
+	size_t i;
 	for (i = 0; i < mYData.size(); ++i)
 		result.mYData[i] = fmod(mYData[i], target);
 
@@ -552,7 +552,7 @@ DatasetType Dataset2D::ComputeYMean() const
 DatasetType Dataset2D::GetAverageDeltaX() const
 {
 	DatasetType sum(0.0);
-	unsigned int i;
+	size_t i;
 	for (i = 1; i < mXData.size(); ++i)
 		sum += mXData[i] - mXData[i - 1];
 
