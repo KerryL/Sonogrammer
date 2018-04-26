@@ -148,6 +148,11 @@ private:
 	void UpdateSonogramInformation();
 	void UpdateSonogram();
 	void ApplyFilters();
+	void UpdateFFTResolutionLimits();
+
+	bool ImageInformationComplete() const;
+	bool GetTimeValues(double& minTime, double& maxTime) const;
+	bool GetFrequencyValues(double& minFrequency, double& maxFrequency) const;
 
 	std::unique_ptr<AudioFile> audioFile;
 	std::vector<Filter> filters;

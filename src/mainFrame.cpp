@@ -464,6 +464,7 @@ void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	UpdateFFTResolutionLimits();
 	ApplyFilters();
 	UpdateSonogram();
 }
@@ -549,17 +550,8 @@ void MainFrame::PlayButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	}
 
 	double startTime, endTime;
-	if (!timeMinText->GetValue().ToDouble(&startTime))
-	{
-		wxMessageBox(_T("Failed to parse minimum time."));
+	if (!GetTimeValues(startTime, endTime))
 		return;
-	}
-
-	if (!timeMaxText->GetValue().ToDouble(&endTime))
-	{
-		wxMessageBox(_T("Failed to parse maximum time."));
-		return;
-	}
 
 	if (endTime <= startTime)
 	{
@@ -638,9 +630,9 @@ void MainFrame::HandleNewAudioFile()
 
 	UpdateAudioInformation();
 	UpdateSonogramInformation();
-	UpdateFFTInformation();
 
 	originalSoundData = std::make_unique<SoundData>(audioFile->GetSoundData());
+	UpdateFFTInformation();
 	UpdateFilterSampleRates();
 	ApplyFilters();
 	UpdateSonogram();
@@ -680,12 +672,29 @@ void MainFrame::UpdateAudioInformation()
 
 void MainFrame::UpdateFFTInformation()
 {
-	resolutionSlider->SetMin(0);
-	resolutionSlider->SetMax(GetNumberOfResolutions());
-	resolutionSlider->SetValue(resolutionSlider->GetMax() / 2);
+	UpdateFFTResolutionLimits();
 	rangeText->SetLabel(wxString::Format(_T("%0.0f Hz"), audioFile->GetSampleRate() * 0.5));
 
 	UpdateFFTCalculatedInformation();
+}
+
+void MainFrame::UpdateFFTResolutionLimits()
+{
+	resolutionSlider->Enable(false);// In case we fail to set the limits, don't allow the user to move it
+	if (!ImageInformationComplete() || !originalSoundData)
+		return;
+
+	double dummy, maxImageFrequency;
+	if (!GetFrequencyValues(dummy, maxImageFrequency))
+		return;
+
+	const double maxAllowedResolution(std::min(originalSoundData->GetSampleRate() / 2, static_cast<float>(maxImageFrequency)));
+	const unsigned int minSliderValue(static_cast<unsigned int>(ceil(log2(originalSoundData->GetSampleRate() / maxAllowedResolution) - 1.0)));
+
+	resolutionSlider->Enable(true);
+	resolutionSlider->SetMin(minSliderValue);
+	resolutionSlider->SetMax(GetNumberOfResolutions());
+	resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
 }
 
 void MainFrame::UpdateSonogramInformation()
@@ -699,21 +708,12 @@ void MainFrame::UpdateSonogramInformation()
 
 void MainFrame::UpdateSonogram()
 {
-	if (!filteredSoundData)
+	if (!filteredSoundData || !ImageInformationComplete())
 		return;
 
 	double startTime, endTime;
-	if (!timeMinText->GetValue().ToDouble(&startTime))
-	{
-		wxMessageBox(_T("Failed to parse minimum time."));
+	if (!GetTimeValues(startTime, endTime))
 		return;
-	}
-
-	if (!timeMaxText->GetValue().ToDouble(&endTime))
-	{
-		wxMessageBox(_T("Failed to parse maximum time."));
-		return;
-	}
 
 	if (endTime <= startTime)
 		return;// Could be in the middle of typing a number
@@ -734,17 +734,8 @@ void MainFrame::UpdateSonogram()
 		return;
 	}
 
-	if (!frequencyMinText->GetValue().ToDouble(&parameters.minFrequency))
-	{
-		wxMessageBox(_T("Failed to parse minimum frequency."));
+	if (!GetFrequencyValues(parameters.minFrequency, parameters.maxFrequency))
 		return;
-	}
-
-	if (!frequencyMaxText->GetValue().ToDouble(&parameters.maxFrequency))
-	{
-		wxMessageBox(_T("Failed to parse maximum frequency."));
-		return;
-	}
 
 	if (parameters.maxFrequency <= parameters.minFrequency)
 		return;// Could be in the middle of typing a number -> TODO:  Best approach may be to start a timer upon encountering an invalid number of conflicting inputs.  After 2 or 3 seconds, if not corrected (or if user starts typing in another box?), then disply the error message.
@@ -756,17 +747,8 @@ void MainFrame::UpdateSonogram()
 unsigned int MainFrame::GetNumberOfResolutions() const
 {
 	double startTime, endTime;
-	if (!timeMinText->GetValue().ToDouble(&startTime))
-	{
-		wxMessageBox(_T("Failed to parse minimum time."));
+	if (!GetTimeValues(startTime, endTime))
 		return 0;
-	}
-
-	if (!timeMaxText->GetValue().ToDouble(&endTime))
-	{
-		wxMessageBox(_T("Failed to parse minimum time."));
-		return 0;
-	}
 
 	const double currentDuration(endTime - startTime);
 	if (currentDuration <= 0.0)
@@ -777,6 +759,46 @@ unsigned int MainFrame::GetNumberOfResolutions() const
 
 	const unsigned int numberOfPoints(currentDuration * audioFile->GetSampleRate());
 	return FastFourierTransform::GetMaxPowerOfTwo(numberOfPoints) - 1;
+}
+
+bool MainFrame::ImageInformationComplete() const
+{
+	return !timeMinText->GetValue().IsEmpty() &&
+		!timeMaxText->GetValue().IsEmpty() &&
+		!frequencyMinText->GetValue().IsEmpty() &&
+		!frequencyMaxText->GetValue().IsEmpty();
+}
+
+bool MainFrame::GetTimeValues(double& minTime, double& maxTime) const
+{
+	if (!timeMinText->GetValue().ToDouble(&minTime))
+	{
+		wxMessageBox(_T("Failed to parse minimum time."));
+		return false;
+	}
+	else if (!timeMaxText->GetValue().ToDouble(&maxTime))
+	{
+		wxMessageBox(_T("Failed to parse maximum time."));
+		return false;
+	}
+
+	return true;
+}
+
+bool MainFrame::GetFrequencyValues(double& minFrequency, double& maxFrequency) const
+{
+	if (!frequencyMinText->GetValue().ToDouble(&minFrequency))
+	{
+		wxMessageBox(_T("Failed to parse minimum frequency."));
+		return false;
+	}
+	else if (!frequencyMaxText->GetValue().ToDouble(&maxFrequency))
+	{
+		wxMessageBox(_T("Failed to parse maximum frequency."));
+		return false;
+	}
+
+	return true;
 }
 
 double MainFrame::GetResolution() const
@@ -852,16 +874,8 @@ void MainFrame::UpdateAudioPosition(const float& position)
 	currentTimeText->SetLabel(wxString::Format(_T("%02d:%04.1f"), minutes, position - minutes * 60.0));
 
 	double minTime, maxTime;
-	if (!timeMinText->GetValue().ToDouble(&minTime))
-	{
-		wxMessageBox(_T("Failed to parse min time"));
+	if (!GetTimeValues(minTime, maxTime))
 		return;
-	}
-	if (!timeMaxText->GetValue().ToDouble(&maxTime))
-	{
-		wxMessageBox(_T("Failed to parse max time"));
-		return;
-	}
 
 	if (position < minTime || position > maxTime)
 		sonogramImage->UpdateTimeCursor(0.0);
