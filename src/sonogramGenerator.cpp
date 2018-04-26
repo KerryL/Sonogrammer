@@ -153,6 +153,7 @@ void SonogramGenerator::ComputeFrequencyInformation()
 
 unsigned int SonogramGenerator::ComputeNumberOfSlices() const
 {
+	assert(soundData.GetDuration() * soundData.GetSampleRate() > parameters.windowSize);
 	return (soundData.GetDuration() * soundData.GetSampleRate() - parameters.windowSize)
 		/ (parameters.windowSize * (1.0 - parameters.overlap)) + 1;
 }
