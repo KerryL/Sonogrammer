@@ -692,8 +692,9 @@ void MainFrame::UpdateFFTResolutionLimits()
 	const unsigned int minSliderValue(static_cast<unsigned int>(ceil(log2(originalSoundData->GetSampleRate() / maxAllowedResolution) - 1.0)));
 
 	resolutionSlider->Enable(true);
-	resolutionSlider->SetMin(minSliderValue);
+	resolutionSlider->SetMin(0);// Min, then max, then min again to prevent GTK warning
 	resolutionSlider->SetMax(GetNumberOfResolutions());
+	resolutionSlider->SetMin(minSliderValue);
 	resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
 }
 
