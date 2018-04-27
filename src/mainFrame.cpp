@@ -255,7 +255,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.7"));
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Resolution (Hz)")));
-	innerSizer->Add(resolutionSlider);
+	innerSizer->Add(resolutionSlider, wxSizerFlags().Expand());
 
 	innerSizer->AddStretchSpacer();
 	innerSizer->Add(resolutionText);
