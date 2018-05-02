@@ -464,7 +464,7 @@ void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& WXUNUSED(event))
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	UpdateFFTResolutionLimits();
+	UpdateFFTInformation();
 	ApplyFilters();
 	UpdateSonogram();
 }
