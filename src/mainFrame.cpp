@@ -13,9 +13,11 @@
 #include "filterDialog.h"
 #include "colorMapDialog.h"
 #include "dropTarget.h"
+#include "videoMaker.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
+#include <wx/valnum.h>
 
 // SDL headers
 #include <SDL_version.h>
@@ -69,6 +71,7 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_BUTTON(idPauseButton,						MainFrame::PauseButtonClickedEvent)
 	EVT_BUTTON(idStopButton,						MainFrame::StopButtonClickedEvent)
 	EVT_BUTTON(idEditColorMap,						MainFrame::EditColorMapButtonClickedEvent)
+	EVT_BUTTON(idMakeVideo,							MainFrame::MakeVideoButtonClickedEvent)
 	EVT_TEXT(idImageControl,						MainFrame::ImageTextCtrlChangedEvent)
 	EVT_SLIDER(idFFT,								MainFrame::FFTSettingsChangedEvent)
 	EVT_TEXT(idFFT,									MainFrame::FFTSettingsChangedEvent)
@@ -108,6 +111,7 @@ void MainFrame::CreateControls()
 	rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
+	rightBottomSizer->Add(CreateVideoControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 
 	TransferDataToWindow();
 	DisableFileDependentControls();
@@ -227,6 +231,25 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	audioInfoSizer->Add(audioSampleFormatText);
 	audioInfoSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Bit Rate")));
 	audioInfoSizer->Add(audioBitRateText);
+
+	return sizer;
+}
+
+wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
+{
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Video")));
+	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
+	sizer->Add(innerSizer);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Width")));
+	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoWidth)));
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height")));
+	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoHeight)));
+
+	makeVideoButton = new wxButton(sizer->GetStaticBox(), idMakeVideo, _T("Make Video"));
+	makeVideoButton->Enable(false);
+	innerSizer->Add(makeVideoButton);
 
 	return sizer;
 }
@@ -603,6 +626,26 @@ void MainFrame::SetControlEnablesOnStop()
 	sonogramImage->HideTimeCursor();
 }
 
+void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	if (!filteredSoundData || !ImageInformationComplete())
+		return;
+
+	SonogramGenerator::FFTParameters parameters;
+	if (!GetFFTParameters(parameters))
+		return;
+
+	VideoMaker videoMaker(videoWidth, videoHeight);
+	if (videoMaker.MakeVideo(filteredSoundData, parameters, colorMap))
+	{
+		// TODO:  Save to file
+	}
+	else
+	{
+		// Show error message
+	}
+}
+
 void MainFrame::HandleNewAudioFile()
 {
 	const wxString fileName(audioFileName->GetValue());
@@ -720,29 +763,37 @@ void MainFrame::UpdateSonogram()
 		return;// Could be in the middle of typing a number
 
 	SonogramGenerator::FFTParameters parameters;
+	if (!GetFFTParameters(parameters))
+		return;
+
+	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
+	sonogramImage->SetImage(generator.GetImage(colorMap));
+}
+
+bool MainFrame::GetFFTParameters(SonogramGenerator::FFTParameters& parameters)
+{
 	parameters.windowFunction = static_cast<FastFourierTransform::WindowType>(windowComboBox->GetSelection());
 	parameters.windowSize = GetWindowSize();
 
 	if (!overlapTextBox->GetValue().ToDouble(&parameters.overlap))
 	{
 		wxMessageBox(_T("Failed to parse overlap."));
-		return;
+		return false;
 	}
 	else if (parameters.overlap < 0.0 || parameters.overlap > 1.0)
 	{
 		//wxMessageBox(_T("Overlap must be between 0 and 1."));
 		// Message handled in UpdateFFTCalcualtedInformation()
-		return;
+		return false;
 	}
 
 	if (!GetFrequencyValues(parameters.minFrequency, parameters.maxFrequency))
-		return;
+		return false;
 
 	if (parameters.maxFrequency <= parameters.minFrequency)
-		return;// Could be in the middle of typing a number -> TODO:  Best approach may be to start a timer upon encountering an invalid number of conflicting inputs.  After 2 or 3 seconds, if not corrected (or if user starts typing in another box?), then disply the error message.
+		return false;// Could be in the middle of typing a number -> TODO:  Best approach may be to start a timer upon encountering an invalid number of conflicting inputs.  After 2 or 3 seconds, if not corrected (or if user starts typing in another box?), then disply the error message.
 
-	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
-	sonogramImage->SetImage(generator.GetImage(colorMap));
+	return true;
 }
 
 unsigned int MainFrame::GetNumberOfResolutions() const
@@ -815,6 +866,7 @@ unsigned int MainFrame::GetWindowSize() const
 void MainFrame::EnableFileDependentControls()
 {
 	exportSonogramImageButton->Enable();
+	makeVideoButton->Enable();
 
 	playButton->Enable();
 	//pauseButton->Enable();// Gets enabled after we begin playing
@@ -829,6 +881,7 @@ void MainFrame::EnableFileDependentControls()
 void MainFrame::DisableFileDependentControls()
 {
 	exportSonogramImageButton->Enable(false);
+	makeVideoButton->Enable(false);
 
 	playButton->Enable(false);
 	pauseButton->Enable(false);

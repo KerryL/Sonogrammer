@@ -50,6 +50,7 @@ private:
 	wxSizer* CreateAudioControls(wxWindow* parent);
 	wxSizer* CreateFFTControls(wxWindow* parent);
 	wxSizer* CreateImageControls(wxWindow* parent);
+	wxSizer* CreateVideoControls(wxWindow* parent);
 
 	// Controls
 	StaticImage* sonogramImage;
@@ -94,6 +95,8 @@ private:
 	wxStaticText* cursorTimeText;
 	wxStaticText* cursorFrequencyText;
 
+	wxButton* makeVideoButton;
+
 	// The event IDs
 	enum MainFrameEventID
 	{
@@ -114,7 +117,9 @@ private:
 
 		idImageControl,
 
-		idFFT
+		idFFT,
+
+		idMakeVideo
 	};
 
 	// Events
@@ -141,6 +146,8 @@ private:
 
 	void OnClose(wxCloseEvent& event);
 
+	void MakeVideoButtonClickedEvent(wxCommandEvent& event);
+
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();
 	void UpdateFFTInformation();
@@ -162,6 +169,8 @@ private:
 
 	static wxColor ComputeContrastingMarkerColor(const SonogramGenerator::ColorMap& m);
 
+	bool GetFFTParameters(SonogramGenerator::FFTParameters& parameters);
+
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
@@ -180,6 +189,9 @@ private:
 	void SetControlEnablesOnStop();
 
 	void UpdateAudioPosition(const float& position);
+
+	unsigned int videoWidth = 800;
+	unsigned int videoHeight = 600;
 
 	DECLARE_EVENT_TABLE();
 };
