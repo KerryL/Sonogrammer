@@ -68,7 +68,7 @@ public:
 	///
 	/// \see GetNumberOfAverages
 	static std::unique_ptr<Dataset2D> ComputeFFT(Dataset2D data,
-		const WindowType &window, unsigned int windowSize,
+		const WindowType &window, size_t windowSize,
 		const double &overlap, const bool &subtractMean);
 
 	/// Returns the number of averages to be used given the specified window
@@ -80,8 +80,8 @@ public:
 	/// \param dataSize   Number of points in signal time history.
 	///
 	/// \return The number of averages.
-	static unsigned int GetNumberOfAverages(const unsigned int windowSize,
-		const double &overlap, const unsigned int &dataSize);
+	static size_t GetNumberOfAverages(const size_t windowSize,
+		const double &overlap, const size_t &dataSize);
 
 	/// Returns the percent overlap between adjacent windows, given the
 	/// specified window parameters.
@@ -91,8 +91,8 @@ public:
 	/// \param dataSize         Number of points in signal time history.
 	///
 	/// \return The percent overlap between adjacent windows.
-	static double ComputeOverlap(unsigned int &windowSize,
-		unsigned int &numberOfAverages, const unsigned int &dataSize);
+	static double ComputeOverlap(size_t &windowSize,
+		size_t &numberOfAverages, const size_t &dataSize);
 
 	/// Returns a string containing the name of the specified window.
 	///
@@ -108,7 +108,7 @@ public:
 	///
 	/// \return The largest allowable power of two for the specified sample
 	///         size.
-	static unsigned int GetMaxPowerOfTwo(const unsigned int &sampleSize);
+	static size_t GetMaxPowerOfTwo(const size_t &sampleSize);
 
 private:
 	static void ApplyWindow(Dataset2D &data, const WindowType &window);
@@ -122,14 +122,14 @@ private:
 	static void DoFFT(Dataset2D &temp);
 
 	static void ZeroDataset(Dataset2D &data);
-	static Dataset2D GenerateConstantDataset(const DatasetType &xValue, const DatasetType &yValue, const unsigned int &size);
+	static Dataset2D GenerateConstantDataset(const DatasetType &xValue, const DatasetType &yValue, const size_t &size);
 
 	static Dataset2D ConvertDoubleSidedToSingleSided(const Dataset2D &fullSpectrum, const bool &preserveDCValue = true);
 
-	static Dataset2D ChopSample(const Dataset2D &data, const unsigned int &sample,
-		const unsigned int &windowSize, const double &overlap);
+	static Dataset2D ChopSample(const Dataset2D &data, const size_t &sample,
+		const size_t &windowSize, const double &overlap);
 
-	static void AddToAverage(Dataset2D &average, const Dataset2D &data, const unsigned int &count);
+	static void AddToAverage(Dataset2D &average, const Dataset2D &data, const size_t &count);
 
 	static void ConvertAmplitudeToDecibels(Dataset2D &fft);
 
@@ -146,8 +146,8 @@ private:
 	static Dataset2D ComplexMagnitude(const Dataset2D &a);
 	static Dataset2D ComplexPower(const Dataset2D &a, const DatasetType &power);
 
-	static unsigned int ComputeRequiredOverlapPoints(const unsigned int &dataSize,
-		const unsigned int &windowSize, const unsigned int &averages);
+	static unsigned int ComputeRequiredOverlapPoints(const size_t &dataSize,
+		const size_t &windowSize, const size_t &averages);
 };
 
 #endif// FFT_H_
