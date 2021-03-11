@@ -81,7 +81,7 @@ void AudioRenderer::RenderLoop()
 	desiredSpec.freq = static_cast<int>(data->GetSampleRate());
 	desiredSpec.channels = 1;
 	desiredSpec.silence = 0;
-	desiredSpec.samples = static_cast<uint16_t>(data->GetData().GetNumberOfPoints());
+	desiredSpec.samples = 4096;// static_cast<uint16_t>(data->GetData().GetNumberOfPoints());
 	desiredSpec.format = AUDIO_F32;
 
 	SDL_AudioSpec obtainedSpec;
@@ -97,10 +97,18 @@ void AudioRenderer::RenderLoop()
 
 	assert(desiredSpec.format == obtainedSpec.format);
 
+	std::vector<float> renderData(data->GetData().GetNumberOfPoints() * obtainedSpec.channels);
+	assert(desiredSpec.channels == 1);
+	for (size_t i = 0; i < data->GetData().GetNumberOfPoints(); ++i)
+	{
+		for (unsigned int j = 0; j < obtainedSpec.channels; ++j)
+			renderData[obtainedSpec.channels * i + j] = data->GetData().GetY()[i];
+	}
+
 	SDL_ClearQueuedAudio(outputDevice);
 	SDL_PauseAudioDevice(outputDevice, 0);
 
-	if (SDL_QueueAudio(outputDevice, data->GetData().GetY().data(), data->GetData().GetNumberOfPoints() * sizeof(float)) != 0)
+	if (SDL_QueueAudio(outputDevice, renderData.data(), renderData.size() * sizeof(float)) != 0)
 	{
 		std::ostringstream ss;
 		ss << "Failed to queue audio:  " << SDL_GetError();
