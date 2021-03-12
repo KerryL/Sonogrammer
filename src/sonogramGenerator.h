@@ -49,6 +49,8 @@ public:
 	typedef std::set<MagnitudeColor> ColorMap;
 	wxImage GetImage(const ColorMap& colorMap) const;
 
+	static wxColor ComputeContrastingMarkerColor(const ColorMap& m);
+
 	static wxColor GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
 		const wxColor& upperColor, const double& upperValue, const double& value);
 

@@ -167,8 +167,6 @@ private:
 
 	SonogramGenerator::ColorMap colorMap;
 
-	static wxColor ComputeContrastingMarkerColor(const SonogramGenerator::ColorMap& m);
-
 	bool GetFFTParameters(SonogramGenerator::FFTParameters& parameters);
 
 	unsigned int GetNumberOfResolutions() const;
@@ -190,8 +188,8 @@ private:
 
 	void UpdateAudioPosition(const float& position);
 
-	unsigned int videoWidth = 800;
-	unsigned int videoHeight = 600;
+	unsigned int videoWidth = 200;
+	unsigned int videoHeight = 200;
 
 	DECLARE_EVENT_TABLE();
 };

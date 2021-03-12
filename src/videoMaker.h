@@ -20,6 +20,9 @@ public:
 private:
 	const unsigned int width;
 	const unsigned int height;
+	static const double frameRate;// [Hz]
+
+	wxImage GetFrameImage(const wxImage& wholeSonogram, const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
 };
 
 #endif// VIDEO_MAKER_H_

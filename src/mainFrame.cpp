@@ -354,7 +354,7 @@ void MainFrame::SetProperties()
 	// Default color map
 	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
 	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
-	sonogramImage->SetMarkerColor(ComputeContrastingMarkerColor(colorMap));
+	sonogramImage->SetMarkerColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 
 #ifdef __WXMSW__
 	//SetIcon(wxIcon(_T("ICON_ID_MAIN"), wxBITMAP_TYPE_ICO_RESOURCE));
@@ -499,28 +499,9 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 		return;
 
 	colorMap = dialog.GetColorMap();
-	sonogramImage->SetMarkerColor(ComputeContrastingMarkerColor(colorMap));
+	sonogramImage->SetMarkerColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 	assert(colorMap.size() > 1);
 	UpdateSonogram();
-}
-
-wxColor MainFrame::ComputeContrastingMarkerColor(const SonogramGenerator::ColorMap& m)
-{
-	double minMag(1.0);
-	wxColor minColor;
-	for (const auto& c : m)
-	{
-		if (c.magnitude < minMag)
-		{
-			minColor = c.color;
-			minMag = c.magnitude;
-		}
-	}
-
-	const double perceivedLuminance((0.299 * minColor.Red() + 0.587 * minColor.Green() + 0.114 * minColor.Blue()) / 255.0);
-	if (perceivedLuminance < 0.5)
-		return wxColor(255, 255, 255);// black
-	return wxColor(0, 0, 0);// white
 }
 
 void MainFrame::ApplyFilters()
