@@ -45,7 +45,10 @@ wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData,
 	wholeSonogram.Rescale(std::max(static_cast<unsigned int>(wholeSonogram.GetWidth()), width), height, wxIMAGE_QUALITY_HIGH);
 	
 	// Scale the wholeSonogram for use as a footer in each frame
-	footer = wholeSonogram.Scale(width + yAxisWidth, footerHeight);
+	footer = wxImage(wholeSonogram.GetWidth() + width, wholeSonogram.GetHeight());
+	footer.SetRGB(wxRect(0, 0, footer.GetWidth(), footer.GetHeight()), 255, 255, 255);
+	footer.Paste(wholeSonogram, width / 2, 0);
+	footer.Rescale(width + yAxisWidth, footerHeight);
 	
 	// Add time scale across top of wholeSonogram
 	// Also, extend beginning and end of sonogram with white so cursor stays in the middle throughout playback
@@ -131,7 +134,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	wxImage baseFrame(width + yAxisWidth, height + xAxisHeight + footerHeight);
 	baseFrame.SetRGB(wxRect(0, 0, baseFrame.GetWidth(), baseFrame.GetHeight()), 255, 255, 255);
 	baseFrame.Paste(yAxisLabel, 0, xAxisHeight);
-	baseFrame.Paste(footer, 0, height + xAxisHeight);
+	baseFrame.Paste(footer, 0, wholeSonogram.GetHeight());
 
 	std::ostringstream errorStream;
 	VideoEncoder encoder(errorStream);
@@ -178,10 +181,27 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	
 	const int lineWidth(1);// [px]
 
-	auto image(wholeSonogram.GetSubImage(wxRect(std::min(wholeSonogram.GetWidth() - width, static_cast<unsigned int>(time / secondsPerPixel)), 0, width, wholeSonogram.GetHeight())));
+	const auto leftPixel(static_cast<unsigned int>(time / secondsPerPixel));
+	auto image(wholeSonogram.GetSubImage(wxRect(std::min(wholeSonogram.GetWidth() - width, leftPixel), 0, width, wholeSonogram.GetHeight())));
 	frame.Paste(image, yAxisWidth, 0);
 	frame.SetRGB(wxRect(width / 2 + yAxisWidth, 0, lineWidth, height + xAxisHeight), lineColor.Red(), lineColor.Green(), lineColor.Blue());
-
-	// TODO:  Grey-out footer
-	return frame;
+	
+	const int rightPixel(leftPixel + width);
+	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
+	const int rightFooter(rightPixel * frame.GetWidth() / wholeSonogram.GetWidth());
+	
+	// Grey-out the appropriate portions of the footer
+	wxBitmap temp(frame);
+	{
+		wxMemoryDC dc;
+		dc.SelectObject(temp);
+		wxBrush fill(wxColor(170, 170, 170, 80), wxBRUSHSTYLE_SOLID);
+		dc.SetBrush(fill);
+		dc.SetPen(wxNullPen);
+		if (leftFooter > 0)
+			dc.DrawRectangle(0, wholeSonogram.GetHeight(), leftFooter, footerHeight);
+		if (rightFooter < frame.GetWidth())
+			dc.DrawRectangle(rightFooter, wholeSonogram.GetHeight(), frame.GetWidth(), footerHeight);
+	}
+	return temp.ConvertToImage();
 }
