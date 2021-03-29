@@ -34,7 +34,6 @@ bool VideoEncoder::InitializeEncoder(const unsigned int& width, const unsigned i
 		av_packet_unref(&outputPacketB);
 	}
 
-	avcodec_register_all();
 	if (codecName == "H264")
 		encoder = avcodec_find_encoder(AV_CODEC_ID_H264);
 	else

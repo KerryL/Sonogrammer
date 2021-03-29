@@ -42,7 +42,7 @@ AR = ar rcs
 RANLIB = ranlib
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -Werror $(INCDIRS) `wx-config --cppflags` -std=c++14 `pkg-config --cflags libavformat libswresample libavcodec libavutil sdl2`
+CFLAGS = -Wall -Wextra $(INCDIRS) `wx-config --cppflags` -std=c++14 `pkg-config --cflags libavformat libswresample libavcodec libavutil sdl2`
 CFLAGS_DEBUG = $(CFLAGS) -g
 CFLAGS_RELEASE = $(CFLAGS) -O2
 

@@ -18,11 +18,20 @@ public:
 		const std::set<SonogramGenerator::MagnitudeColor>& colorMap);
 
 private:
+	// Dimensions apply to sonogram itself; axis and footer add to the total size
 	const unsigned int width;
 	const unsigned int height;
+	
 	static const double frameRate;// [Hz]
+	static const int footerHeight;
+	static const int xAxisHeight;
+	static const int yAxisWidth;
 
-	wxImage GetFrameImage(const wxImage& wholeSonogram, const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
+	wxImage PrepareSonogram(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
+		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const;
+	wxImage CreateYAxisLabel(const SonogramGenerator::FFTParameters& parameters);
+	wxImage GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame,
+		const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
 };
 
 #endif// VIDEO_MAKER_H_
