@@ -39,22 +39,26 @@ const int VideoMaker::yAxisWidth(20);
 wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
 	const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const
 {
+	const unsigned int sonogramWidth(width - yAxisWidth);
+	const unsigned int sonogramHeight(height - xAxisHeight - footerHeight);
+	const unsigned int sonogramWithXAxisHeight(height - footerHeight);
+	
 	// Create the sonogram (one pixel for every FFT slice)
 	SonogramGenerator generator(*soundData, parameters);
 	auto wholeSonogram(generator.GetImage(colorMap));
-	wholeSonogram.Rescale(std::max(static_cast<unsigned int>(wholeSonogram.GetWidth()), width), height, wxIMAGE_QUALITY_HIGH);
+	wholeSonogram.Rescale(std::max(static_cast<unsigned int>(wholeSonogram.GetWidth()), sonogramWidth), sonogramHeight, wxIMAGE_QUALITY_HIGH);
 	
 	// Scale the wholeSonogram for use as a footer in each frame
-	footer = wxImage(wholeSonogram.GetWidth() + width, wholeSonogram.GetHeight());
+	footer = wxImage(wholeSonogram.GetWidth() + sonogramWidth, wholeSonogram.GetHeight());
 	footer.SetRGB(wxRect(0, 0, footer.GetWidth(), footer.GetHeight()), 255, 255, 255);
-	footer.Paste(wholeSonogram, width / 2, 0);
-	footer.Rescale(width + yAxisWidth, footerHeight);
+	footer.Paste(wholeSonogram, sonogramWidth / 2, 0);
+	footer.Rescale(width, footerHeight);
 	
 	// Add time scale across top of wholeSonogram
 	// Also, extend beginning and end of sonogram with white so cursor stays in the middle throughout playback
-	wxImage sonogramWithXAxis(wholeSonogram.GetWidth() + width, wholeSonogram.GetHeight() + xAxisHeight);
+	wxImage sonogramWithXAxis(wholeSonogram.GetWidth() + sonogramWidth, sonogramWithXAxisHeight);
 	sonogramWithXAxis.SetRGB(wxRect(0, 0, sonogramWithXAxis.GetWidth(), sonogramWithXAxis.GetHeight()), 255, 255, 255);
-	sonogramWithXAxis.Paste(wholeSonogram, width / 2, xAxisHeight);
+	sonogramWithXAxis.Paste(wholeSonogram, sonogramWidth / 2, xAxisHeight);
 	
 	wxFont labelFont(xAxisHeight / 2, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
 	wxBitmap temp(sonogramWithXAxis);
@@ -65,11 +69,11 @@ wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData,
 		dc.SetFont(labelFont);
 		dc.SetTextBackground(*wxWHITE);
 		dc.SetTextForeground(*wxBLACK);
-		const auto pixelsPerSecond(static_cast<int>(temp.GetWidth() / soundData->GetDuration() + 0.5));
+		const auto pixelsPerSecond(static_cast<int>(wholeSonogram.GetWidth() / soundData->GetDuration() + 0.5));
 		
 		// Lines are exactly at the second mark; labels are to the left of the line
 		int time(0);
-		for (unsigned int x = width / 2; x < temp.GetWidth() - width / 2; x += pixelsPerSecond)
+		for (unsigned int x = sonogramWidth / 2; x < temp.GetWidth() - sonogramWidth / 2; x += pixelsPerSecond)
 		{
 			const auto label(wxString::Format(_T("%d:%02d"), time / 60, time % 60));
 			const auto extents(dc.GetTextExtent(label));
@@ -85,7 +89,8 @@ wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData,
 
 wxImage VideoMaker::CreateYAxisLabel(const SonogramGenerator::FFTParameters& parameters)
 {
-	wxBitmap yAxisLabel(yAxisWidth, height);
+	const unsigned int sonogramHeight(height - footerHeight - xAxisHeight);
+	wxBitmap yAxisLabel(yAxisWidth, sonogramHeight);
 	wxFont labelFont(xAxisHeight / 3, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
 	
 	{
@@ -98,23 +103,23 @@ wxImage VideoMaker::CreateYAxisLabel(const SonogramGenerator::FFTParameters& par
 		dc.SetTextForeground(*wxBLACK);
 		const auto kHzLabel(_T("kHz"));
 		const auto kHzExtents(dc.GetTextExtent(kHzLabel));
-		dc.DrawText(kHzLabel, (yAxisWidth - kHzExtents.GetWidth()) / 2, height - xAxisHeight / 2);
+		dc.DrawText(kHzLabel, (yAxisWidth - kHzExtents.GetWidth()) / 2, sonogramHeight - xAxisHeight / 2);
 		
 		// No line for zero, but we can include a line for max, so we'll draw a line at exactly the correct pixel and label below the line
 		// We'll aim to have 5 graduations to nearest kHz
 		const int graduations(5);
 		const int graduationIncrement(static_cast<int>((parameters.maxFrequency - parameters.minFrequency) / graduations / 1000.0 + 0.5));// [kHz]
-		const int pixelsPerGraduation(height * graduationIncrement / (parameters.maxFrequency - parameters.minFrequency) * 1000);
+		const int pixelsPerGraduation(sonogramHeight * graduationIncrement / (parameters.maxFrequency - parameters.minFrequency) * 1000);
 		
 		labelFont.SetPointSize(xAxisHeight / 2);
 		dc.SetFont(labelFont);
 		int frequency(static_cast<int>(parameters.minFrequency / 1000 + 0.5) + graduationIncrement);// [kHz]
-		for (unsigned int y = pixelsPerGraduation; y <= height; y += pixelsPerGraduation)
+		for (unsigned int y = pixelsPerGraduation; y <= sonogramHeight; y += pixelsPerGraduation)
 		{
 			dc.DrawLine(0, y, yAxisWidth, y);
 			const auto label(wxString::Format(_T("%d"), frequency));
 			const auto extents(dc.GetTextExtent(label));
-			dc.DrawText(label, (yAxisWidth - extents.GetWidth()) / 2, height - y);
+			dc.DrawText(label, (yAxisWidth - extents.GetWidth()) / 2, sonogramHeight - y);
 			frequency += graduationIncrement;
 		}
 	}
@@ -131,7 +136,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	const auto wholeSonogram(PrepareSonogram(soundData, parameters, colorMap, footer));
 	const auto yAxisLabel(CreateYAxisLabel(parameters));
 	
-	wxImage baseFrame(width + yAxisWidth, height + xAxisHeight + footerHeight);
+	wxImage baseFrame(width, height);
 	baseFrame.SetRGB(wxRect(0, 0, baseFrame.GetWidth(), baseFrame.GetHeight()), 255, 255, 255);
 	baseFrame.Paste(yAxisLabel, 0, xAxisHeight);
 	baseFrame.Paste(footer, 0, wholeSonogram.GetHeight());
@@ -143,7 +148,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 
 	// Let's try encoding the video first
 	double time(0.0);
-	const double secondsPerPixel(soundData->GetDuration() / (wholeSonogram.GetWidth() - width));
+	const double secondsPerPixel(soundData->GetDuration() / (wholeSonogram.GetWidth() - width + yAxisWidth));
 	const auto lineColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 	std::vector<AVPacket*> encodedPackets;
 	int i(0);
@@ -180,11 +185,13 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	// 3.  Grey-out the portions of the footer that do not correspond to the current frame
 	
 	const int lineWidth(1);// [px]
+	
+	const unsigned int sonogramWidth(width - yAxisWidth);
 
 	const auto leftPixel(static_cast<unsigned int>(time / secondsPerPixel));
-	auto image(wholeSonogram.GetSubImage(wxRect(std::min(wholeSonogram.GetWidth() - width, leftPixel), 0, width, wholeSonogram.GetHeight())));
+	auto image(wholeSonogram.GetSubImage(wxRect(std::min(wholeSonogram.GetWidth() - sonogramWidth, leftPixel), 0, sonogramWidth, wholeSonogram.GetHeight())));
 	frame.Paste(image, yAxisWidth, 0);
-	frame.SetRGB(wxRect(width / 2 + yAxisWidth, 0, lineWidth, height + xAxisHeight), lineColor.Red(), lineColor.Green(), lineColor.Blue());
+	frame.SetRGB(wxRect(sonogramWidth / 2 + yAxisWidth, 0, lineWidth, wholeSonogram.GetHeight()), lineColor.Red(), lineColor.Green(), lineColor.Blue());
 	
 	const int rightPixel(leftPixel + width);
 	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
