@@ -116,7 +116,7 @@ wxImage VideoMaker::CreateYAxisLabel(const SonogramGenerator::FFTParameters& par
 		int frequency(static_cast<int>(parameters.minFrequency / 1000 + 0.5) + graduationIncrement);// [kHz]
 		for (unsigned int y = pixelsPerGraduation; y <= sonogramHeight; y += pixelsPerGraduation)
 		{
-			dc.DrawLine(0, y, yAxisWidth, y);
+			dc.DrawLine(0, sonogramHeight - y, yAxisWidth, sonogramHeight - y);
 			const auto label(wxString::Format(_T("%d"), frequency));
 			const auto extents(dc.GetTextExtent(label));
 			dc.DrawText(label, (yAxisWidth - extents.GetWidth()) / 2, sonogramHeight - y);
@@ -157,7 +157,8 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		const auto frame(GetFrameImage(wholeSonogram, baseFrame, time, secondsPerPixel, lineColor));
 		time += 1.0 / frameRate;
 
-		frame.SaveFile(wxString::Format("/home/kerry/Projects/a/img%06d.jpg", i++));
+		//frame.SaveFile(wxString::Format("/home/kerry/Projects/a/img%06d.jpg", i++));
+		frame.SaveFile(wxString::Format("D:\\lib\\ffmpeg-3.4.2-win64-shared\\bin\\bird\\img%06d.jpg", i++));
 
 		// TODO:  Convert to AVFrame
 		/*AVFrame inputFrame;
@@ -195,7 +196,8 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	
 	const int rightPixel(leftPixel + width);
 	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
-	const int rightFooter(leftFooter + width * sonogramWidth / wholeSonogram.GetWidth());
+	//const int rightFooter(leftFooter + width * sonogramWidth / wholeSonogram.GetWidth());
+	const int rightFooter(rightPixel * frame.GetWidth() / wholeSonogram.GetWidth());
 	
 	// Grey-out the appropriate portions of the footer
 	wxBitmap temp(frame);

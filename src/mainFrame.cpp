@@ -29,6 +29,7 @@ extern "C"
 #include <libavformat/version.h>
 #include <libavutil/version.h>
 #include <libswresample/version.h>
+#include <libavformat/avformat.h>
 }
 
 // Standard C++ headers
@@ -40,6 +41,14 @@ MainFrame::MainFrame() : wxFrame(NULL, wxID_ANY, wxEmptyString,
 {
 	CreateControls();
 	SetProperties();
+
+	// Depending on linked FFmpeg versions, we may need to make these calls, or it may be depreciated and we should not call it
+#if LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(58, 9, 100)
+	av_register_all();
+#endif
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(58, 10, 100)
+	avcodec_register_all();
+#endif
 }
 
 //==========================================================================
@@ -728,7 +737,7 @@ void MainFrame::UpdateSonogramInformation()
 	timeMaxText->SetValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
 
 	frequencyMinText->SetValue(_T("0.0"));
-	frequencyMaxText->SetValue(wxString::Format(_T("%0.0f"), std::min(8000.0, audioFile->GetSampleRate() * 0.5)));
+	frequencyMaxText->SetValue(wxString::Format(_T("%0.0f"), std::min(12000.0, audioFile->GetSampleRate() * 0.5)));
 }
 
 void MainFrame::UpdateSonogram()
