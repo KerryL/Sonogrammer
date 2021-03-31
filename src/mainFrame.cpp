@@ -616,15 +616,14 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (!GetFFTParameters(parameters))
 		return;
 
+	wxFileDialog dialog(this, _T("Export Sonogram Video"), wxString(), wxString(),
+		_T("MP4 files (*.mp4)|*.mp4"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() == wxID_CANCEL)
+		return;
+
 	VideoMaker videoMaker(videoWidth, videoHeight);
-	if (videoMaker.MakeVideo(filteredSoundData, parameters, colorMap))
-	{
-		// TODO:  Save to file
-	}
-	else
-	{
-		// Show error message
-	}
+	if (!videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString()))
+		wxMessageBox(_T("Failed to generate sonogram:  ") + videoMaker.GetErrorString(), _T("Error"));
 }
 
 void MainFrame::HandleNewAudioFile()
