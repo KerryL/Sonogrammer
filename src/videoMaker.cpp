@@ -195,7 +195,7 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	
 	const int rightPixel(leftPixel + width);
 	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
-	const int rightFooter(rightPixel * frame.GetWidth() / wholeSonogram.GetWidth());
+	const int rightFooter(leftFooter + width * sonogramWidth / wholeSonogram.GetWidth());
 	
 	// Grey-out the appropriate portions of the footer
 	wxBitmap temp(frame);
