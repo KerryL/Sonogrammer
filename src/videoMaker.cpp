@@ -141,6 +141,21 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	baseFrame.Paste(yAxisLabel, 0, xAxisHeight);
 	baseFrame.Paste(footer, 0, wholeSonogram.GetHeight());
 
+	auto maskedFooter(footer);
+	const unsigned char grey(200);
+	const unsigned char alpha(50);
+	for (int x = 0; x < maskedFooter.GetWidth(); ++x)
+	{
+		for (int y = 0; y < maskedFooter.GetHeight(); ++y)
+		{
+			unsigned char r(maskedFooter.GetRed(x, y));
+			unsigned char g(maskedFooter.GetGreen(x, y));
+			unsigned char b(maskedFooter.GetBlue(x, y));
+			ComputeMaskedColor(grey, alpha, r, g, b);
+			maskedFooter.SetRGB(x, y, r, g, b);
+		}
+	}
+
 	std::ostringstream errorStream;
 	VideoEncoder encoder(errorStream);
 	/*if (!encoder.InitializeEncoder(width, height, frameRate, 0, AV_PIX_FMT_YUV420P, "H264"))
@@ -154,7 +169,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	int i(0);
 	while (time <= soundData->GetDuration())
 	{
-		const auto frame(GetFrameImage(wholeSonogram, baseFrame, time, secondsPerPixel, lineColor));
+		const auto frame(GetFrameImage(wholeSonogram, baseFrame, maskedFooter, time, secondsPerPixel, lineColor));
 		time += 1.0 / frameRate;
 
 		//frame.SaveFile(wxString::Format("/home/kerry/Projects/a/img%06d.jpg", i++));
@@ -175,7 +190,14 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	return false;
 }
 
-wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame,
+void VideoMaker::ComputeMaskedColor(const unsigned char& grey, const unsigned char& alpha, unsigned char& r, unsigned char& g, unsigned char& b)
+{
+	r = alpha * grey / 255 + (255 - alpha) * r / 255;
+	g = alpha * grey / 255 + (255 - alpha) * g / 255;
+	b = alpha * grey / 255 + (255 - alpha) * b / 255;
+}
+
+wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame, const wxImage& maskedFooter,
 	const double& time, const double& secondsPerPixel, const wxColor& lineColor) const
 {
 	wxImage frame(baseFrame);
@@ -188,28 +210,23 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	const int lineWidth(1);// [px]
 	
 	const unsigned int sonogramWidth(width - yAxisWidth);
+	const unsigned int sonogramHeight(height - footerHeight);
 
 	const auto leftPixel(static_cast<unsigned int>(time / secondsPerPixel));
 	auto image(wholeSonogram.GetSubImage(wxRect(std::min(wholeSonogram.GetWidth() - sonogramWidth, leftPixel), 0, sonogramWidth, wholeSonogram.GetHeight())));
 	frame.Paste(image, yAxisWidth, 0);
 	frame.SetRGB(wxRect(sonogramWidth / 2 + yAxisWidth, 0, lineWidth, wholeSonogram.GetHeight()), lineColor.Red(), lineColor.Green(), lineColor.Blue());
 	
+	// Grey-out the appropriate portions of the footer
 	const int rightPixel(leftPixel + width);
 	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
 	const int rightFooter(leftFooter + width * sonogramWidth / wholeSonogram.GetWidth());
 	
-	// Grey-out the appropriate portions of the footer
-	wxBitmap temp(frame);
-	{
-		wxMemoryDC dc;
-		dc.SelectObject(temp);
-		wxBrush fill(wxColor(170, 170, 170, 80), wxBRUSHSTYLE_SOLID);// TODO:  Under MSW this completely masks out the footer - we want transparency
-		dc.SetBrush(fill);
-		dc.SetPen(*wxTRANSPARENT_PEN);
-		if (leftFooter > 0)
-			dc.DrawRectangle(0, wholeSonogram.GetHeight(), leftFooter, footerHeight);
-		if (rightFooter < frame.GetWidth())
-			dc.DrawRectangle(rightFooter, wholeSonogram.GetHeight(), frame.GetWidth(), footerHeight);
-	}
-	return temp.ConvertToImage();
+	if (leftFooter > 0)
+		frame.Paste(maskedFooter.GetSubImage(wxRect(0, 0, leftFooter, maskedFooter.GetHeight())), 0, sonogramHeight);
+	
+	if (rightFooter < frame.GetWidth())
+		frame.Paste(maskedFooter.GetSubImage(wxRect(rightFooter, 0, maskedFooter.GetWidth() - rightFooter, maskedFooter.GetHeight())), rightFooter, sonogramHeight);
+
+	return frame;
 }

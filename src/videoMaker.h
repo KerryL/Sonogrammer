@@ -30,8 +30,10 @@ private:
 	wxImage PrepareSonogram(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
 		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const;
 	wxImage CreateYAxisLabel(const SonogramGenerator::FFTParameters& parameters);
-	wxImage GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame,
+	wxImage GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame, const wxImage& maskedFooter,
 		const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
+
+	static void ComputeMaskedColor(const unsigned char& grey, const unsigned char& alpha, unsigned char& r, unsigned char& g, unsigned char& b);
 };
 
 #endif// VIDEO_MAKER_H_
