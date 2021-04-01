@@ -6,6 +6,8 @@
 // Local headers
 #include "videoMaker.h"
 #include "videoEncoder.h"
+#include "audioEncoder.h"
+#include "muxer.h"
 
 // wxWidgets headers
 #include <wx/image.h>
@@ -18,7 +20,8 @@
 // FFmpeg headers
 extern "C"
 {
-//#include <libavcodec/avcodec.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
 }
 
 #ifdef _WIN32
@@ -27,6 +30,7 @@ extern "C"
 
 // Standard C++ headers
 #include <sstream>
+#include <queue>
 
 const double VideoMaker::frameRate(30.0);// [Hz]
 
@@ -41,53 +45,101 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	wholeSonogram.Rescale(std::max(static_cast<unsigned int>(wholeSonogram.GetWidth()), width), height, wxIMAGE_QUALITY_HIGH);
 
 	std::ostringstream errorStream;
-	/*VideoEncoder encoder(errorStream);
-	if (!encoder.InitializeEncoder(width, height, frameRate, 0, AV_PIX_FMT_YUV420P, "H264"))
-		return false;*/
 
-	AVFormatContext* outputContext;
-	avformat_alloc_output_context2(&outputContext, nullptr, nullptr, fileName.c_str());
-	if (!outputContext)
-	{
-		errorString = "Failed to allocate output context";
+	Muxer muxer(errorStream);
+	if (!muxer.Initialize("mp4", fileName))
 		return false;
-	}
 
-	AVStream* audioStream(nullptr);
-	AVStream* videoStream(nullptr);
-	if (outputContext->oformat->video_codec != AV_CODEC_ID_NONE)
-		videoStream = AddVideoStream(outputContext, outputContext->oformat->video_codec);
-	if (outputContext->oformat->audio_codec != AV_CODEC_ID_NONE)
-		audioStream = AddAudioStream(outputContext, outputContext->oformat->audio_codec);
+	assert(muxer.GetVideoCodec() != AV_CODEC_ID_NONE);
+	assert(muxer.GetAudioCodec() != AV_CODEC_ID_NONE);
 
-	// Let's try encoding the video first
+	VideoEncoder videoEncoder(errorStream);
+	if (!videoEncoder.Initialize(muxer.GetOutputFormatContext(), width, height, frameRate, AV_PIX_FMT_YUV420P, muxer.GetVideoCodec()))
+		return false;
+
+	AudioEncoder audioEncoder(errorStream);
+	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLT, muxer.GetAudioCodec()))
+		return false;
+
+	if (!muxer.AddStream(videoEncoder) || muxer.AddStream(audioEncoder))
+		return false;
+
+	muxer.WriteHeader();
+
+	// Encode the video
 	double time(0.0);
 	const double secondsPerPixel(soundData->GetDuration() / wholeSonogram.GetWidth());
 	const auto lineColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
-	std::vector<AVPacket*> encodedPackets;
-	int i(0);
+	std::queue<AVPacket*> encodedVideo;
 	while (time <= soundData->GetDuration())
 	{
-		const auto frame(GetFrameImage(wholeSonogram, time, secondsPerPixel, lineColor));
+		const auto image(GetFrameImage(wholeSonogram, time, secondsPerPixel, lineColor));
+		auto frame(ImageToAVFrame(image));
 		time += 1.0 / frameRate;
 
-		frame.SaveFile(wxString::Format("D:\\lib\\ffmpeg-3.4.2-win64-shared\\bin\\bird\\img%06d.jpg", i++));
-
-		// TODO:  Convert to AVFrame
-		/*AVFrame inputFrame;
-
-		encodedPackets.push_back(encoder.EncodeVideo(inputFrame));*/
+		auto convertedFrame(videoEncoder.ConvertFrame(frame));
+		encodedVideo.push(videoEncoder.Encode(*convertedFrame));
+		av_frame_free(&frame);
+		av_frame_free(&convertedFrame);
 	}
 
-	/*AVFormatContext &outFmtCtx;
+	std::vector<std::queue<AVPacket*>*> packets;
+	packets.push_back(&encodedVideo);// Must be added to vector in same order that streams were added to muxer
 
-	// write to file for debugging
-	avio_open(&outFmtCtx->pb, "test.h264", AVIO_FLAG_WRITE);
-	avformat_write_header(outFmtCtx, nullptr);*/
+	// Encode the audio
+	unsigned int startSample(0);
+	std::queue<AVPacket*> encodedAudio;
+	while (time <= soundData->GetDuration())
+	{
+		auto frame(SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize()));
+		startSample += audioEncoder.GetFrameSize();
 
-	// TODO:  At some point, would be nice to include labeled scales for x and y axes
+		encodedAudio.push(audioEncoder.Encode(*frame));
+		av_frame_free(&frame);
+	}
+
+	packets.push_back(&encodedAudio);// Must be added to vector in same order that streams were added to muxer
+
+	while (!encodedAudio.empty() || !encodedVideo.empty())
+		muxer.WriteNextFrame(packets);
+
+	muxer.WriteTrailer();
 
 	return false;
+}
+
+AVFrame* VideoMaker::ImageToAVFrame(const wxImage& image) const
+{
+	AVFrame* frame(av_frame_alloc());
+	const int align(64);
+	const int size(av_image_get_buffer_size(AV_PIX_FMT_RGBA, width, height, align));
+	//uint8_t* rgbData(static_cast<uint8_t*>(av_malloc(size)));
+	av_image_fill_arrays(frame->data, frame->linesize, image.GetData(), AV_PIX_FMT_RGBA, width, height, align);
+	//av_freep(rgbData);
+	return frame;
+}
+
+AVFrame* VideoMaker::SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize) const
+{
+	AVFrame* frame(av_frame_alloc());
+	frame->channels = 1;
+	frame->channel_layout = AV_CH_LAYOUT_MONO;
+	frame->sample_rate = soundData.GetSampleRate();
+	frame->nb_samples = frameSize;
+	frame->format = AV_SAMPLE_FMT_FLT;
+	const int align(64);
+	av_frame_get_buffer(frame, align);
+
+	if (startSample + frameSize > soundData.GetData().GetNumberOfPoints())
+	{
+		memset(frame->data[0], 0, frameSize * sizeof(float));
+		const auto valuesToCopy(soundData.GetData().GetNumberOfPoints() - startSample);
+		memcpy(frame->data[0], soundData.GetData().GetY().data() + startSample, valuesToCopy * sizeof(float));
+	}
+	else
+		memcpy(frame->data[0], soundData.GetData().GetY().data() + startSample, frameSize * sizeof(float));
+
+	return frame;
 }
 
 wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const double& time, const double& secondsPerPixel, const wxColor& lineColor) const
@@ -125,7 +177,7 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const double& ti
 	return image;
 }
 
-AVStream* VideoMaker::AddAudioStream(AVFormatContext* context, AVCodecID id)
+/*AVStream* VideoMaker::AddAudioStream(AVFormatContext* context, AVCodecID id)
 {
 	AVCodecContext* codecContext;
 	AVStream* s(avformat_new_stream(context, 1));
@@ -136,3 +188,4 @@ AVStream* VideoMaker::AddAudioStream(AVFormatContext* context, AVCodecID id)
 AVStream* VideoMaker::AddVideoStream(AVFormatContext* context, AVCodecID id)
 {
 }
+*/
