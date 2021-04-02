@@ -169,12 +169,13 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	assert(muxer.GetVideoCodec() != AV_CODEC_ID_NONE);
 	assert(muxer.GetAudioCodec() != AV_CODEC_ID_NONE);
 
+	// TODO:  Allow user to specify video and audio bitrates?
 	VideoEncoder videoEncoder(errorStream);
-	if (!videoEncoder.Initialize(muxer.GetOutputFormatContext(), width, height, frameRate, AV_PIX_FMT_YUV420P, muxer.GetVideoCodec()))
+	if (!videoEncoder.Initialize(muxer.GetOutputFormatContext(), width, height, frameRate, 130000, AV_PIX_FMT_YUV420P, muxer.GetVideoCodec()))
 		return false;
 
 	AudioEncoder audioEncoder(errorStream);
-	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodec()))
+	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), 64000, AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodec()))
 		return false;
 
 	std::queue<AVPacket> encodedVideo;

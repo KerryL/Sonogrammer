@@ -42,7 +42,7 @@ VideoEncoder::~VideoEncoder()
 }
 
 bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsigned int& width, const unsigned int& heightIn,
-	const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId)
+	const double& frameRate, const int& bitRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId)
 {
 	if (!DoBasicInitialization(outputFormatContext, codecId))
 		return false;
@@ -58,7 +58,7 @@ bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsign
 	encoderContext->width = width;
 	encoderContext->height = height;
 	encoderContext->pix_fmt = pixelFormat;
-	encoderContext->bit_rate = 400000;// TODO:  Justify choice or don't hardcode?
+	encoderContext->bit_rate = bitRate;
 	encoderContext->gop_size = 12;// TODO:  Justify choice or don't hardcode?  Has something to do with max spacing betwee "intraframes"
 	encoderContext->time_base.num = 1;
 	encoderContext->time_base.den = static_cast<int>(frameRate);// TODO:  Better to specify with AVRational?

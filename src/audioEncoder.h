@@ -17,7 +17,7 @@ class AudioEncoder : public Encoder
 public:
 	explicit AudioEncoder(std::ostream& outStream);
 
-	bool Initialize(AVFormatContext* outputFormatContext, const int& channels, const int& sampleRate, const AVSampleFormat& format, const AVCodecID& codecId);
+	bool Initialize(AVFormatContext* outputFormatContext, const int& channels, const int& sampleRate, const int& bitRate, const AVSampleFormat& format, const AVCodecID& codecId);
 
 	unsigned int GetFrameSize() const;
 };

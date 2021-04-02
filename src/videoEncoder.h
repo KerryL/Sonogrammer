@@ -37,7 +37,7 @@ public:
 	~VideoEncoder();
 
 	bool Initialize(AVFormatContext* outputFormat, const unsigned int& width, const unsigned int& height,
-		const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId);
+		const double& frameRate, const int& bitRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId);
 
 	bool ConvertFrame();
 	

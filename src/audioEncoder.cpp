@@ -28,7 +28,7 @@ AudioEncoder::AudioEncoder(std::ostream& outStream) : Encoder(outStream)
 {
 }
 
-bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& channels, const int& sampleRate, const AVSampleFormat& format, const AVCodecID& codecId)
+bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& channels, const int& sampleRate, const int& bitRate, const AVSampleFormat& format, const AVCodecID& codecId)
 {
 	if (!DoBasicInitialization(outputFormatContext, codecId))
 		return false;
@@ -40,11 +40,10 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 	encoderContext->sample_fmt = format;
 	encoderContext->channels = channels;
 	encoderContext->channel_layout = AV_CH_LAYOUT_MONO;
-	//encoderContext->profile = FF_PROFILE_AAC_LOW;// TODO:  Shouldn't be hard-coded - also understand why we would choose this one?
 	encoderContext->sample_rate = sampleRate;
 	encoderContext->time_base.num = 1;
 	encoderContext->time_base.den = sampleRate;
-	encoderContext->bit_rate = 64000;// TODO:  Justify choice or don't hardcode?
+	encoderContext->bit_rate = bitRate;
 
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, nullptr), "Failed to open audio encoder"))
 		return false;
