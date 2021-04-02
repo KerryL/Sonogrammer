@@ -152,7 +152,7 @@ void VideoMaker::FreeQueuedPackets(std::queue<AVPacket>& q)
 void VideoMaker::ImageToAVFrame(const wxImage& image, AVFrame*& frame) const
 {
 	const int align(32);
-	av_image_fill_arrays(frame->data, frame->linesize, image.GetData(), AV_PIX_FMT_RGBA, width, height, align);
+	av_image_fill_arrays(frame->data, frame->linesize, image.GetData(), AV_PIX_FMT_RGB24, width, height, align);
 }
 
 void VideoMaker::SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const
