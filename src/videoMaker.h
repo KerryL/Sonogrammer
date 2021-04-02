@@ -25,6 +25,12 @@ extern "C"
 #pragma warning(pop)
 #endif// _WIN32
 
+// Standard C++ headers
+#include <queue>
+
+// FFmpeg forward declarations
+struct AVPacket;
+
 class VideoMaker
 {
 public:
@@ -45,6 +51,8 @@ private:
 	wxImage GetFrameImage(const wxImage& wholeSonogram, const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
 	void ImageToAVFrame(const wxImage& image, AVFrame*& frame) const;
 	void SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const;
+	
+	static void FreeQueuedPackets(std::queue<AVPacket>& q);
 };
 
 #endif// VIDEO_MAKER_H_

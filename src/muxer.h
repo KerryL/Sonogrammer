@@ -41,7 +41,7 @@ public:
 	~Muxer();
 
 	bool Initialize(const std::string& format, const std::string& outputFileName);
-	bool AddStream(Encoder& encoder, std::queue<AVPacket*>& packetQueue);
+	bool AddStream(Encoder& encoder, std::queue<AVPacket>& packetQueue);
 
 	AVFormatContext* GetOutputFormatContext() const { return outputFormatContext; }
 
@@ -61,8 +61,8 @@ private:
 	
 	struct Stream
 	{
-		AVStream* s;
-		std::queue<AVPacket*>* q;
+		Encoder* e;
+		std::queue<AVPacket>* q;
 	};
 	
 	std::vector<Stream> streams;

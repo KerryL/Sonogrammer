@@ -38,15 +38,24 @@ public:
 	
 	AVStream* stream = nullptr;
 	AVCodec* encoder = nullptr;
+	AVCodecContext* encoderContext = nullptr;
+	
 	AVFrame* inputFrame = nullptr;
+	
+	enum class Status
+	{
+		HavePacket,
+		NeedMoreInput,
+		Error
+	};
 
-	AVPacket* Encode();
+	Status Encode(AVPacket& encodedPacket);
 
 protected:
 	std::ostream& outStream;
 
-	AVCodecContext* encoderContext = nullptr;
 	AVPacket outputPacketA, outputPacketB;
+	int64_t ptsCounter;
 	
 	bool DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId);// Must be called by derived class initialization methods
 };

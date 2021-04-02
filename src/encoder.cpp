@@ -67,14 +67,24 @@ bool Encoder::DoBasicInitialization(AVFormatContext* outputFormatContext, const 
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_to_context(encoderContext, stream->codecpar), "Failed to copy parameters to context"))
 		return false;
 	
+	ptsCounter = 0;
+	
 	return true;
 }
 
-AVPacket* Encoder::Encode()
+Encoder::Status Encoder::Encode(AVPacket& encodedPacket)
 {
+	if (inputFrame->nb_samples == 0)// video
+		inputFrame->pts = ptsCounter++;
+	else// audio
+	{
+		inputFrame->pts = ptsCounter;
+		ptsCounter += inputFrame->nb_samples;
+	}
+		
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, inputFrame),
 		"Error sending frame to encoder"))
-		return nullptr;
+		return Status::Error;
 
 	AVPacket* lastOutputPacket, *nextOutputPacket(nullptr);
 	bool nextPacketIsA(true);
@@ -92,11 +102,18 @@ AVPacket* Encoder::Encode()
 		returnCode = avcodec_receive_packet(encoderContext, nextOutputPacket);
 	} while (returnCode == 0);
 
-	if (returnCode != AVERROR(EAGAIN) || !lastOutputPacket)
+	if (returnCode != AVERROR(EAGAIN)/* || !lastOutputPacket*/)
 	{
 		LibCallWrapper::FFmpegErrorCheck(returnCode, "Failed to receive packet from encoder");
-		return nullptr;
+		return Status::Error;
+	}
+	
+	if (lastOutputPacket)
+	{
+		av_packet_rescale_ts(lastOutputPacket, encoderContext->time_base, stream->time_base);
+		av_packet_ref(&encodedPacket, lastOutputPacket);
+		return Status::HavePacket;
 	}
 
-	return lastOutputPacket;
+	return Status::NeedMoreInput;
 }

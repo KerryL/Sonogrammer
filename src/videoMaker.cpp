@@ -30,8 +30,8 @@ extern "C"
 
 // Standard C++ headers
 #include <sstream>
-#include <queue>
 #include <iostream>
+#include <fstream>
 
 const double VideoMaker::frameRate(30.0);// [Hz]
 
@@ -62,8 +62,8 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodec()))
 		return false;
 
-	std::queue<AVPacket*> encodedVideo;
-	std::queue<AVPacket*> encodedAudio;
+	std::queue<AVPacket> encodedVideo;
+	std::queue<AVPacket> encodedAudio;
 	if (!muxer.AddStream(videoEncoder, encodedVideo) || !muxer.AddStream(audioEncoder, encodedAudio))
 		return false;
 
@@ -81,36 +81,72 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		time += 1.0 / frameRate;
 
 		if (!videoEncoder.ConvertFrame())
+		{
+			FreeQueuedPackets(encodedVideo);
 			return false;
-		auto packet(videoEncoder.Encode());
-		if (!packet)
+		}
+			
+		AVPacket packet;
+		av_init_packet(&packet);
+		const auto status(videoEncoder.Encode(packet));
+		if (status == Encoder::Status::Error)
+		{
+			av_packet_unref(&packet);
+			FreeQueuedPackets(encodedVideo);
 			return false;
-		encodedVideo.push(packet);
+		}
+		if (status == Encoder::Status::HavePacket)
+			encodedVideo.push(packet);
+		else
+			av_packet_unref(&packet);
 	}
 
 	// Encode the audio
 	unsigned int startSample(0);
-	while (time <= soundData->GetDuration())
+	while (startSample <= soundData->GetData().GetNumberOfPoints())
 	{
 		SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize(), audioEncoder.inputFrame);
 		startSample += audioEncoder.GetFrameSize();
 
-		auto packet(audioEncoder.Encode());
-		if (!packet)
+		AVPacket packet;
+		av_init_packet(&packet);
+		const auto status(audioEncoder.Encode(packet));
+		if (status == Encoder::Status::Error)
+		{
+			av_packet_unref(&packet);
+			FreeQueuedPackets(encodedAudio);
+			FreeQueuedPackets(encodedVideo);
 			return false;
-		encodedAudio.push(packet);
+		}
+		if (status == Encoder::Status::HavePacket)
+			encodedAudio.push(packet);
+		else
+			av_packet_unref(&packet);
 	}
 
 	while (!encodedAudio.empty() || !encodedVideo.empty())
 	{
 		if (!muxer.WriteNextFrame())
+		{
+			FreeQueuedPackets(encodedAudio);
+			FreeQueuedPackets(encodedVideo);
 			return false;
+		}
 	}
 
 	if (!muxer.WriteTrailer())
 		return false;
 
 	return true;
+}
+
+void VideoMaker::FreeQueuedPackets(std::queue<AVPacket>& q)
+{
+	while (!q.empty())
+	{
+		av_packet_unref(&q.front());
+		q.pop();
+	}
 }
 
 void VideoMaker::ImageToAVFrame(const wxImage& image, AVFrame*& frame) const
