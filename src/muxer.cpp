@@ -62,9 +62,12 @@ bool Muxer::Initialize(const std::string& format, const std::string& outputFileN
 	return true;
 }
 
-bool Muxer::AddStream(Encoder& encoder)
+bool Muxer::AddStream(Encoder& encoder, std::queue<AVPacket*>& packetQueue)
 {
-	streams.push_back(encoder.stream);
+	Stream stream;
+	stream.s = encoder.stream;
+	stream.q = &packetQueue;
+	streams.push_back(stream);
 	return true;
 }
 
@@ -100,19 +103,19 @@ bool Muxer::WriteTrailer()
 	return true;
 }
 
-bool Muxer::WriteNextFrame(std::vector<std::queue<AVPacket*>*>& queues)
+bool Muxer::WriteNextFrame()
 {
 	unsigned int minPTSi(0);
-	for (unsigned int i = 1; i < queues.size(); ++i)
+	for (unsigned int i = 1; i < streams.size(); ++i)
 	{
 		//if (streams[i]->pts.val * av_q2d(streams[i]->time_base) < streams[minPTSi]->pts.val * av_q2d(streams[minPTSi]->time_base))
-		if (queues[i]->size() > queues[minPTSi]->size())
+		if (streams[i].q->size() > streams[minPTSi].q->size())
 			minPTSi = i;
 	}
 
-	auto packet(queues[minPTSi]->front());
-	queues[minPTSi]->pop();
-	AVStream* minPTSStream(streams[minPTSi]);
+	auto packet(streams[minPTSi].q->front());
+	streams[minPTSi].q->pop();
+	AVStream* minPTSStream(streams[minPTSi].s);
 
 	/*packet->pts = av_rescale_q_rnd(packet->pts, outputFormatContext->time_base, minPTSStream->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
 	packet->dts = av_rescale_q_rnd(packet->dts, outputFormatContext->codec->time_base, minPTSStream->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));

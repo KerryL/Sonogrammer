@@ -59,10 +59,12 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		return false;
 
 	AudioEncoder audioEncoder(errorStream);
-	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLT, muxer.GetAudioCodec()))
+	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodec()))
 		return false;
 
-	if (!muxer.AddStream(videoEncoder) || !muxer.AddStream(audioEncoder))
+	std::queue<AVPacket*> encodedVideo;
+	std::queue<AVPacket*> encodedAudio;
+	if (!muxer.AddStream(videoEncoder, encodedVideo) || !muxer.AddStream(audioEncoder, encodedAudio))
 		return false;
 
 	if (!muxer.WriteHeader())
@@ -72,37 +74,36 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	double time(0.0);
 	const double secondsPerPixel(soundData->GetDuration() / wholeSonogram.GetWidth());
 	const auto lineColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
-	std::queue<AVPacket*> encodedVideo;
 	while (time <= soundData->GetDuration())
 	{
 		const auto image(GetFrameImage(wholeSonogram, time, secondsPerPixel, lineColor));
-		ImageToAVFrame(image, videoEncoder.inputFrame);
+		ImageToAVFrame(image, videoEncoder.rgbFrame);
 		time += 1.0 / frameRate;
 
 		if (!videoEncoder.ConvertFrame())
 			return false;
-		encodedVideo.push(videoEncoder.Encode());
+		auto packet(videoEncoder.Encode());
+		if (!packet)
+			return false;
+		encodedVideo.push(packet);
 	}
-
-	std::vector<std::queue<AVPacket*>*> packets;
-	packets.push_back(&encodedVideo);// Must be added to vector in same order that streams were added to muxer
 
 	// Encode the audio
 	unsigned int startSample(0);
-	std::queue<AVPacket*> encodedAudio;
 	while (time <= soundData->GetDuration())
 	{
 		SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize(), audioEncoder.inputFrame);
 		startSample += audioEncoder.GetFrameSize();
 
-		encodedAudio.push(audioEncoder.Encode());
+		auto packet(audioEncoder.Encode());
+		if (!packet)
+			return false;
+		encodedAudio.push(packet);
 	}
-
-	packets.push_back(&encodedAudio);// Must be added to vector in same order that streams were added to muxer
 
 	while (!encodedAudio.empty() || !encodedVideo.empty())
 	{
-		if (!muxer.WriteNextFrame(packets))
+		if (!muxer.WriteNextFrame())
 			return false;
 	}
 
@@ -114,7 +115,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 
 void VideoMaker::ImageToAVFrame(const wxImage& image, AVFrame*& frame) const
 {
-	const int align(64);
+	const int align(32);
 	av_image_fill_arrays(frame->data, frame->linesize, image.GetData(), AV_PIX_FMT_RGBA, width, height, align);
 }
 

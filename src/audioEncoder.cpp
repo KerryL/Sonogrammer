@@ -53,12 +53,18 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 		encoderContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 		
 	inputFrame = av_frame_alloc();
+	if (!inputFrame)
+	{
+		outStream << "Failed to allocated audio input frame" << std::endl;
+		return false;
+	}
+	
 	inputFrame->channels = 1;
 	inputFrame->channel_layout = AV_CH_LAYOUT_MONO;
 	inputFrame->sample_rate = sampleRate;
 	inputFrame->nb_samples = encoderContext->frame_size;
 	inputFrame->format = AV_SAMPLE_FMT_FLT;
-	const int align(64);
+	const int align(32);
 	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(inputFrame, align), "Failed to allocate audio buffer"))
 		return false;
 		

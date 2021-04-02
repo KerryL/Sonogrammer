@@ -68,9 +68,15 @@ bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsign
 
 	av_dict_free(&videoOptions);
 	
-	const int align(64);
+	const int align(32);
 
 	rgbFrame = av_frame_alloc();
+	if (!rgbFrame)
+	{
+		outStream << "Failed to allocated RGB frame" << std::endl;
+		return false;
+	}
+		
 	rgbFrame->format = AV_PIX_FMT_RGB24;
 	rgbFrame->width = width;
 	rgbFrame->height = height;
@@ -78,6 +84,12 @@ bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsign
 		return false;
 
 	inputFrame = av_frame_alloc();
+	if (!inputFrame)
+	{
+		outStream << "Failed to allocated video input frame" << std::endl;
+		return false;
+	}
+	
 	inputFrame->format = pixelFormat;
 	inputFrame->width = width;
 	inputFrame->height = height;

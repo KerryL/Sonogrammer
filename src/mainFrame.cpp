@@ -622,8 +622,7 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 		return;
 
 	VideoMaker videoMaker(videoWidth, videoHeight);
-	if (!videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString()))
-		wxMessageBox(_T("Failed to generate sonogram:  ") + videoMaker.GetErrorString(), _T("Error"));
+	videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString());
 }
 
 void MainFrame::HandleNewAudioFile()
