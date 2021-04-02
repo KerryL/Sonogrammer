@@ -6,6 +6,9 @@
 #ifndef VIDEO_ENCODER_H_
 #define VIDEO_ENCODER_H_
 
+// Local headers
+#include "encoder.h"
+
 #ifdef _WIN32
 #pragma warning(push)
 #pragma warning(disable:4244)
@@ -14,8 +17,7 @@
 // FFmpeg headers
 extern "C"
 {
-#include <libavcodec/avcodec.h>
-#include <libavutil/opt.h>
+#include <libavformat/avformat.h>
 }
 
 #ifdef _WIN32
@@ -26,26 +28,24 @@ extern "C"
 #include <string>
 
 // FFmpeg forward declarations
-struct AVCodec;
-struct AVCodecContext;
-struct AVFrame;
+struct SwsContext;
 
-class VideoEncoder
+class VideoEncoder : public Encoder
 {
 public:
 	VideoEncoder(std::ostream& outStream);
 	~VideoEncoder();
 
-	bool InitializeEncoder(const unsigned int& width, const unsigned int& height, const double& frameRate, const int& bitRate, const AVPixelFormat& format, const std::string& codecName);
+	bool Initialize(AVFormatContext* outputFormat, const unsigned int& width, const unsigned int& height,
+		const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId);
 
-	AVPacket* EncodeVideo(const AVFrame& inputFrame);
+	bool ConvertFrame();
+	
+	AVFrame* rgbFrame = nullptr;
 
 private:
-	std::ostream& outStream;
-
-	AVCodecContext* encoderContext = nullptr;
-	AVCodec* encoder = nullptr;
-	AVPacket outputPacketA, outputPacketB;
+	unsigned int height;
+	SwsContext* pixelFormatConversionContext = nullptr;
 };
 
 #endif// VIDEO_ENCODER_H_

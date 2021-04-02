@@ -301,7 +301,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Range")));
 	innerSizer->Add(rangeText);
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Slize")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Slice")));
 	innerSizer->Add(timeSliceText);
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Size")));
@@ -625,15 +625,13 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (!GetFFTParameters(parameters))
 		return;
 
+	wxFileDialog dialog(this, _T("Export Sonogram Video"), wxString(), wxString(),
+		_T("MP4 files (*.mp4)|*.mp4"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() == wxID_CANCEL)
+		return;
+
 	VideoMaker videoMaker(videoWidth, videoHeight);
-	if (videoMaker.MakeVideo(filteredSoundData, parameters, colorMap))
-	{
-		// TODO:  Save to file
-	}
-	else
-	{
-		// Show error message
-	}
+	videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString());
 }
 
 void MainFrame::HandleNewAudioFile()

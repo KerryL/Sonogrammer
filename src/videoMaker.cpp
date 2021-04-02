@@ -6,6 +6,8 @@
 // Local headers
 #include "videoMaker.h"
 #include "videoEncoder.h"
+#include "audioEncoder.h"
+#include "muxer.h"
 
 // wxWidgets headers
 #include <wx/image.h>
@@ -20,8 +22,8 @@
 // FFmpeg headers
 extern "C"
 {
-#include <libavformat/avio.h>
-#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/imgutils.h>
 }
 
 #ifdef _WIN32
@@ -30,6 +32,8 @@ extern "C"
 
 // Standard C++ headers
 #include <sstream>
+#include <iostream>
+#include <fstream>
 
 const double VideoMaker::frameRate(30.0);// [Hz]
 const int VideoMaker::footerHeight(24);
@@ -128,7 +132,7 @@ wxImage VideoMaker::CreateYAxisLabel(const SonogramGenerator::FFTParameters& par
 }
 
 bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-	const std::set<SonogramGenerator::MagnitudeColor>& colorMap)
+	const std::set<SonogramGenerator::MagnitudeColor>& colorMap, const std::string& fileName)
 {
 	wxInitAllImageHandlers();
 
@@ -156,38 +160,126 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		}
 	}
 
-	std::ostringstream errorStream;
-	VideoEncoder encoder(errorStream);
-	/*if (!encoder.InitializeEncoder(width, height, frameRate, 0, AV_PIX_FMT_YUV420P, "H264"))
-		return false;*/
+	std::ostream& errorStream(std::cerr);
 
-	// Let's try encoding the video first
+	Muxer muxer(errorStream);
+	if (!muxer.Initialize("mp4", fileName))
+		return false;
+
+	assert(muxer.GetVideoCodec() != AV_CODEC_ID_NONE);
+	assert(muxer.GetAudioCodec() != AV_CODEC_ID_NONE);
+
+	VideoEncoder videoEncoder(errorStream);
+	if (!videoEncoder.Initialize(muxer.GetOutputFormatContext(), width, height, frameRate, AV_PIX_FMT_YUV420P, muxer.GetVideoCodec()))
+		return false;
+
+	AudioEncoder audioEncoder(errorStream);
+	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodec()))
+		return false;
+
+	std::queue<AVPacket> encodedVideo;
+	std::queue<AVPacket> encodedAudio;
+	if (!muxer.AddStream(videoEncoder, encodedVideo) || !muxer.AddStream(audioEncoder, encodedAudio))
+		return false;
+
+	if (!muxer.WriteHeader())
+		return false;
+
+	// Encode the video
 	double time(0.0);
 	const double secondsPerPixel(soundData->GetDuration() / (wholeSonogram.GetWidth() - width + yAxisWidth));
 	const auto lineColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
-	std::vector<AVPacket*> encodedPackets;
-	int i(0);
 	while (time <= soundData->GetDuration())
 	{
-		const auto frame(GetFrameImage(wholeSonogram, baseFrame, maskedFooter, time, secondsPerPixel, lineColor));
+		const auto image(GetFrameImage(wholeSonogram, baseFrame, maskedFooter, time, secondsPerPixel, lineColor));
+		ImageToAVFrame(image, videoEncoder.rgbFrame);
 		time += 1.0 / frameRate;
 
-		//frame.SaveFile(wxString::Format("/home/kerry/Projects/a/img%06d.jpg", i++));
-		frame.SaveFile(wxString::Format("D:\\lib\\ffmpeg-3.4.2-win64-shared\\bin\\bird\\img%06d.jpg", i++));
-
-		// TODO:  Convert to AVFrame
-		/*AVFrame inputFrame;
-
-		encodedPackets.push_back(encoder.EncodeVideo(inputFrame));*/
+		if (!videoEncoder.ConvertFrame())
+		{
+			FreeQueuedPackets(encodedVideo);
+			return false;
+		}
+			
+		AVPacket packet;
+		av_init_packet(&packet);
+		const auto status(videoEncoder.Encode(packet));
+		if (status == Encoder::Status::Error)
+		{
+			av_packet_unref(&packet);
+			FreeQueuedPackets(encodedVideo);
+			return false;
+		}
+		if (status == Encoder::Status::HavePacket)
+			encodedVideo.push(packet);
+		else
+			av_packet_unref(&packet);
 	}
 
-	/*AVFormatContext &outFmtCtx;
+	// Encode the audio
+	unsigned int startSample(0);
+	while (startSample <= soundData->GetData().GetNumberOfPoints())
+	{
+		SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize(), audioEncoder.inputFrame);
+		startSample += audioEncoder.GetFrameSize();
 
-	// write to file for debugging
-	avio_open(&outFmtCtx->pb, "test.h264", AVIO_FLAG_WRITE);
-	avformat_write_header(outFmtCtx, nullptr);*/
+		AVPacket packet;
+		av_init_packet(&packet);
+		const auto status(audioEncoder.Encode(packet));
+		if (status == Encoder::Status::Error)
+		{
+			av_packet_unref(&packet);
+			FreeQueuedPackets(encodedAudio);
+			FreeQueuedPackets(encodedVideo);
+			return false;
+		}
+		if (status == Encoder::Status::HavePacket)
+			encodedAudio.push(packet);
+		else
+			av_packet_unref(&packet);
+	}
 
-	return false;
+	while (!encodedAudio.empty() || !encodedVideo.empty())
+	{
+		if (!muxer.WriteNextFrame())
+		{
+			FreeQueuedPackets(encodedAudio);
+			FreeQueuedPackets(encodedVideo);
+			return false;
+		}
+	}
+
+	if (!muxer.WriteTrailer())
+		return false;
+
+	return true;
+}
+
+void VideoMaker::FreeQueuedPackets(std::queue<AVPacket>& q)
+{
+	while (!q.empty())
+	{
+		av_packet_unref(&q.front());
+		q.pop();
+	}
+}
+
+void VideoMaker::ImageToAVFrame(const wxImage& image, AVFrame*& frame) const
+{
+	const int align(32);
+	av_image_fill_arrays(frame->data, frame->linesize, image.GetData(), AV_PIX_FMT_RGB24, width, height, align);
+}
+
+void VideoMaker::SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const
+{
+	if (startSample + frameSize > soundData.GetData().GetNumberOfPoints())
+	{
+		memset(frame->data[0], 0, frameSize * sizeof(float));
+		const auto valuesToCopy(soundData.GetData().GetNumberOfPoints() - startSample);
+		memcpy(frame->data[0], soundData.GetData().GetY().data() + startSample, valuesToCopy * sizeof(float));
+	}
+	else
+		memcpy(frame->data[0], soundData.GetData().GetY().data() + startSample, frameSize * sizeof(float));
 }
 
 void VideoMaker::ComputeMaskedColor(const unsigned char& grey, const unsigned char& alpha, unsigned char& r, unsigned char& g, unsigned char& b)
@@ -218,7 +310,6 @@ wxImage VideoMaker::GetFrameImage(const wxImage& wholeSonogram, const wxImage& b
 	frame.SetRGB(wxRect(sonogramWidth / 2 + yAxisWidth, 0, lineWidth, wholeSonogram.GetHeight()), lineColor.Red(), lineColor.Green(), lineColor.Blue());
 	
 	// Grey-out the appropriate portions of the footer
-	const int rightPixel(leftPixel + width);
 	const int leftFooter(leftPixel * frame.GetWidth() / wholeSonogram.GetWidth());
 	const int rightFooter(leftFooter + width * sonogramWidth / wholeSonogram.GetWidth());
 	

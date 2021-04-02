@@ -188,8 +188,8 @@ private:
 
 	void UpdateAudioPosition(const float& position);
 
-	unsigned int videoWidth = 250;
-	unsigned int videoHeight = 250;
+	unsigned int videoWidth = 256;
+	unsigned int videoHeight = 256;
 
 	DECLARE_EVENT_TABLE();
 };

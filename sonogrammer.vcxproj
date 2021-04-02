@@ -96,7 +96,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_x64_dll;$(FFMPEG)/lib;$(SDL)/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wxbase31ud.lib;wxmsw31ud_adv.lib;wxbase31ud_xml.lib;wxmsw31ud_core.lib;wxmsw31ud_gl.lib;wxzlibd.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxbase31ud.lib;wxmsw31ud_adv.lib;wxbase31ud_xml.lib;wxmsw31ud_core.lib;wxmsw31ud_gl.lib;wxzlibd.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>getGitHash .</Command>
@@ -140,19 +140,21 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>$(WXWIN)\lib\vc_x64_lib;$(FFMPEG)/lib;$(SDL)/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wxbase31u.lib;wxmsw31u_adv.lib;wxbase31u_xml.lib;wxexpat.lib;wxmsw31u_core.lib;wxmsw31u_gl.lib;wxzlib.lib;wxpng.lib;wxtiff.lib;wxjpeg.lib;comctl32.lib;rpcrt4.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wxbase31u.lib;wxmsw31u_adv.lib;wxbase31u_xml.lib;wxexpat.lib;wxmsw31u_core.lib;wxmsw31u_gl.lib;wxzlib.lib;wxpng.lib;wxtiff.lib;wxjpeg.lib;comctl32.lib;rpcrt4.lib;SDL2.lib;avcodec.lib;avformat.lib;avutil.lib;swresample.lib;swscale.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>getGitHash .</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\audioEncoder.cpp" />
     <ClCompile Include="src\audioFile.cpp" />
     <ClCompile Include="src\audioRenderer.cpp" />
     <ClCompile Include="src\audioUtilities.cpp" />
     <ClCompile Include="src\colorMapDialog.cpp" />
     <ClCompile Include="src\dataset2D.cpp" />
     <ClCompile Include="src\dropTarget.cpp" />
+    <ClCompile Include="src\encoder.cpp" />
     <ClCompile Include="src\expressionTree.cpp" />
     <ClCompile Include="src\fft.cpp" />
     <ClCompile Include="src\filter.cpp" />
@@ -167,14 +169,17 @@
     <ClCompile Include="src\staticImage.cpp" />
     <ClCompile Include="src\videoEncoder.cpp" />
     <ClCompile Include="src\videoMaker.cpp" />
+    <ClCompile Include="src\muxer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\audioEncoder.h" />
     <ClInclude Include="src\audioFile.h" />
     <ClInclude Include="src\audioRenderer.h" />
     <ClInclude Include="src\audioUtilities.h" />
     <ClInclude Include="src\colorMapDialog.h" />
     <ClInclude Include="src\dataset2D.h" />
     <ClInclude Include="src\dropTarget.h" />
+    <ClInclude Include="src\encoder.h" />
     <ClInclude Include="src\expressionTree.h" />
     <ClInclude Include="src\fft.h" />
     <ClInclude Include="src\filter.h" />
@@ -188,6 +193,7 @@
     <ClInclude Include="src\staticImage.h" />
     <ClInclude Include="src\videoEncoder.h" />
     <ClInclude Include="src\videoMaker.h" />
+    <ClInclude Include="src\muxer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -7,97 +7,106 @@
 #include "videoEncoder.h"
 #include "libCallWrapper.h"
 
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif// _WIN32
+
+// FFmpeg headers
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
+#include <libswscale/swscale.h>
+#include <libavformat/avformat.h>
+}
+
+#ifdef _WIN32
+#pragma warning(pop)
+#endif// _WIN32
+
 // Standard C++ headers
 #include <cassert>
 
-VideoEncoder::VideoEncoder(std::ostream& outStream) : outStream(outStream)
+VideoEncoder::VideoEncoder(std::ostream& outStream) : Encoder(outStream)
 {
-	av_init_packet(&outputPacketA);
-	av_init_packet(&outputPacketB);
 }
 
 VideoEncoder::~VideoEncoder()
 {
-	if (encoderContext)
-		avcodec_free_context(&encoderContext);
-
-	av_packet_unref(&outputPacketA);
-	av_packet_unref(&outputPacketB);
+	if (rgbFrame)
+		av_frame_free(&rgbFrame);
+		
+	if (pixelFormatConversionContext)
+		sws_freeContext(pixelFormatConversionContext);
 }
 
-bool VideoEncoder::InitializeEncoder(const unsigned int& width, const unsigned int& height, const double& frameRate, const int& bitRate, const AVPixelFormat& format, const std::string& codecName)
+bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsigned int& width, const unsigned int& heightIn,
+	const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId)
 {
-	if (encoderContext)
-	{
-		avcodec_free_context(&encoderContext);
-		av_packet_unref(&outputPacketA);
-		av_packet_unref(&outputPacketB);
-	}
-
-	if (codecName == "H264")
-		encoder = avcodec_find_encoder(AV_CODEC_ID_H264);
-	else
-		assert(false && "Requested unsupported codec");
-
-	if (!encoder)
-	{
-		outStream << "Failed to find encoder" << std::endl;
+	if (!DoBasicInitialization(outputFormatContext, codecId))
 		return false;
-	}
+		
+	height = heightIn;
 
-	encoderContext = avcodec_alloc_context3(encoder);
-	if (!encoderContext)
-	{
-		outStream << "Failed to allocate encoder context" << std::endl;
-		return false;
-	}
+	pixelFormatConversionContext = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, nullptr, nullptr, nullptr);
 
-	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(encoderContext, "refcounted_frames", 1, 0),
-		"Failed to set encoder context to reference count"))
-		return false;
+	AVDictionary* videoOptions(nullptr);
+	/*av_dict_set(&videoOptions, "preset", "slow", 0);
+	av_dict_set(&videoOptions, "crf", "20", 0);*/
 
-	encoderContext->framerate.num = static_cast<int>(frameRate);// TODO:  Be more robust with non-integers
-	encoderContext->framerate.den = 1;
-	encoderContext->pix_fmt = format;
 	encoderContext->width = width;
 	encoderContext->height = height;
+	encoderContext->pix_fmt = pixelFormat;
+	encoderContext->bit_rate = 400000;// TODO:  Justify choice or don't hardcode?
+	encoderContext->gop_size = 12;// TODO:  Justify choice or don't hardcode?  Has something to do with max spacing betwee "intraframes"
+	encoderContext->time_base.num = 1;
+	encoderContext->time_base.den = static_cast<int>(frameRate);// TODO:  Better to specify with AVRational?
 
-	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, nullptr), "Failed to open encoder"))
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, &videoOptions), "Failed to open video encoder"))
 		return false;
 
-	av_init_packet(&outputPacketA);
-	av_init_packet(&outputPacketB);
+	av_dict_free(&videoOptions);
+	
+	const int align(32);
+
+	rgbFrame = av_frame_alloc();
+	if (!rgbFrame)
+	{
+		outStream << "Failed to allocated RGB frame" << std::endl;
+		return false;
+	}
+		
+	rgbFrame->format = AV_PIX_FMT_RGB24;
+	rgbFrame->width = width;
+	rgbFrame->height = height;
+	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(rgbFrame, align), "Failed to allocate rgb frame buffer"))
+		return false;
+
+	inputFrame = av_frame_alloc();
+	if (!inputFrame)
+	{
+		outStream << "Failed to allocated video input frame" << std::endl;
+		return false;
+	}
+	
+	inputFrame->format = pixelFormat;
+	inputFrame->width = width;
+	inputFrame->height = height;
+	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(inputFrame, align), "Failed to allocate converted frame buffer"))
+		return false;
+
+	if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
+		encoderContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_from_context(stream->codecpar, encoderContext), "Failed to copy parameters to stream"))
+		return false;
 
 	return true;
 }
 
-AVPacket* VideoEncoder::EncodeVideo(const AVFrame& inputFrame)
+bool VideoEncoder::ConvertFrame()
 {
-	if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, &inputFrame),
-		"Error sending audio frame to encoder"))
-		return nullptr;
-
-	AVPacket* lastOutputPacket, *nextOutputPacket(nullptr);
-	bool nextPacketIsA(true);
-	int returnCode;
-	do
-	{
-		// Loop to ensure we're not growing a buffer inside ffmpeg
-		lastOutputPacket = nextOutputPacket;
-		nextPacketIsA = !nextPacketIsA;
-		if (nextPacketIsA)
-			nextOutputPacket = &outputPacketA;
-		else
-			nextOutputPacket = &outputPacketB;
-
-		returnCode = avcodec_receive_packet(encoderContext, nextOutputPacket);
-	} while (returnCode == 0);
-
-	if (returnCode != AVERROR(EAGAIN) || !lastOutputPacket)
-	{
-		LibCallWrapper::FFmpegErrorCheck(returnCode, "Failed to receive packet from encoder");
-		return nullptr;
-	}
-
-	return lastOutputPacket;
+	return !LibCallWrapper::FFmpegErrorCheck(sws_scale(pixelFormatConversionContext, rgbFrame->data, rgbFrame->linesize, 0,
+		height, inputFrame->data, inputFrame->linesize), "Failed to convert image");
 }

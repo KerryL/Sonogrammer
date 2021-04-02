@@ -9,13 +9,37 @@
 // Local headers
 #include "sonogramGenerator.h"
 
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable:4244)
+#endif// _WIN32
+
+// FFmpeg headers
+extern "C"
+{
+#include <libavformat/avio.h>
+#include <libavformat/avformat.h>
+}
+
+#ifdef _WIN32
+#pragma warning(pop)
+#endif// _WIN32
+
+// Standard C++ headers
+#include <queue>
+
+// FFmpeg forward declarations
+struct AVPacket;
+
 class VideoMaker
 {
 public:
 	VideoMaker(const unsigned int& width, const unsigned int& height) : width(width), height(height) {}
 
 	bool MakeVideo(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-		const std::set<SonogramGenerator::MagnitudeColor>& colorMap);
+		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, const std::string& fileName);
+
+	const std::string GetErrorString() const { return errorString; }
 
 private:
 	// Dimensions apply to sonogram itself; axis and footer add to the total size
@@ -34,6 +58,13 @@ private:
 		const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
 
 	static void ComputeMaskedColor(const unsigned char& grey, const unsigned char& alpha, unsigned char& r, unsigned char& g, unsigned char& b);
+
+	std::string errorString;
+
+	void ImageToAVFrame(const wxImage& image, AVFrame*& frame) const;
+	void SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const;
+	
+	static void FreeQueuedPackets(std::queue<AVPacket>& q);
 };
 
 #endif// VIDEO_MAKER_H_
