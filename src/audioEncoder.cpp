@@ -30,22 +30,8 @@ AudioEncoder::AudioEncoder(std::ostream& outStream) : Encoder(outStream)
 
 bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& channels, const int& sampleRate, const AVSampleFormat& format, const AVCodecID& codecId)
 {
-	if (encoderContext)
-		avcodec_free_context(&encoderContext);
-
-	encoder = avcodec_find_encoder(codecId);
-	if (!encoder)
-	{
-		outStream << "Failed to find audio encoder" << std::endl;
+	if (!DoBasicInitialization(outputFormatContext, codecId))
 		return false;
-	}
-
-	encoderContext = avcodec_alloc_context3(encoder);
-	if (!encoderContext)
-	{
-		outStream << "Failed to allocate encoder context" << std::endl;
-		return false;
-	}
 
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(encoderContext, "refcounted_frames", 1, 0),
 		"Failed to set encoder context to reference count"))
@@ -53,16 +39,31 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 
 	encoderContext->sample_fmt = format;
 	encoderContext->channels = channels;
-	encoderContext->profile = FF_PROFILE_AAC_LOW;// TODO:  Shouldn't be hard-coded - also understand why we would choose this one?
+	encoderContext->channel_layout = AV_CH_LAYOUT_MONO;
+	//encoderContext->profile = FF_PROFILE_AAC_LOW;// TODO:  Shouldn't be hard-coded - also understand why we would choose this one?
 	encoderContext->sample_rate = sampleRate;
 	encoderContext->time_base.num = 1;
 	encoderContext->time_base.den = sampleRate;
+	encoderContext->bit_rate = 64000;// TODO:  Justify choice or don't hardcode?
 
-	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, nullptr), "Failed to open encoder"))
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, nullptr), "Failed to open audio encoder"))
 		return false;
 
 	if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
 		encoderContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		
+	inputFrame = av_frame_alloc();
+	inputFrame->channels = 1;
+	inputFrame->channel_layout = AV_CH_LAYOUT_MONO;
+	inputFrame->sample_rate = sampleRate;
+	inputFrame->nb_samples = encoderContext->frame_size;
+	inputFrame->format = AV_SAMPLE_FMT_FLT;
+	const int align(64);
+	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(inputFrame, align), "Failed to allocate audio buffer"))
+		return false;
+		
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_from_context(stream->codecpar, encoderContext), "Failed to copy parameters to stream"))
+		return false;
 
 	return true;
 }

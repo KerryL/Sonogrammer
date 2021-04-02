@@ -32,6 +32,11 @@ Muxer::Muxer(std::ostream& outStream) : outStream(outStream)
 
 Muxer::~Muxer()
 {
+	/*while (!streams.empty())
+	{
+		avcodec_close();// or something?
+	}*/
+	
 	if (outputFormatContext)
 		avformat_free_context(outputFormatContext);
 }
@@ -59,12 +64,7 @@ bool Muxer::Initialize(const std::string& format, const std::string& outputFileN
 
 bool Muxer::AddStream(Encoder& encoder)
 {
-	auto s(avformat_new_stream(outputFormatContext, encoder.GetCodec()));
-	if (!s)
-		return false;
-	s->id = outputFormatContext->nb_streams - 1;
-	streams.push_back(s);
-
+	streams.push_back(encoder.stream);
 	return true;
 }
 
@@ -105,17 +105,19 @@ bool Muxer::WriteNextFrame(std::vector<std::queue<AVPacket*>*>& queues)
 	unsigned int minPTSi(0);
 	for (unsigned int i = 1; i < queues.size(); ++i)
 	{
-		if (streams[i]->pts.val * av_q2d(streams[i]->time_base) < streams[minPTSi]->pts.val * av_q2d(streams[minPTSi]->time_base))
+		//if (streams[i]->pts.val * av_q2d(streams[i]->time_base) < streams[minPTSi]->pts.val * av_q2d(streams[minPTSi]->time_base))
+		if (queues[i]->size() > queues[minPTSi]->size())
 			minPTSi = i;
 	}
 
 	auto packet(queues[minPTSi]->front());
 	queues[minPTSi]->pop();
+	AVStream* minPTSStream(streams[minPTSi]);
 
-	packet->pts = av_rescale_q_rnd(packet->pts, streams[minPTSi]->codec->time_base, streams[minPTSi]->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-	packet->dts = av_rescale_q_rnd(packet->dts, streams[minPTSi]->codec->time_base, streams[minPTSi]->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-	packet->duration = av_rescale_q(packet->duration, streams[minPTSi]->codec->time_base, streams[minPTSi]->time_base);
-	packet->stream_index = streams[minPTSi]->index;
+	/*packet->pts = av_rescale_q_rnd(packet->pts, outputFormatContext->time_base, minPTSStream->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	packet->dts = av_rescale_q_rnd(packet->dts, outputFormatContext->codec->time_base, minPTSStream->time_base, static_cast<AVRounding>(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+	packet->duration = av_rescale_q(packet->duration, outputFormatContext->time_base, minPTSStream->time_base);*/
+	packet->stream_index = minPTSStream->index;
 
 	av_interleaved_write_frame(outputFormatContext, packet);
 

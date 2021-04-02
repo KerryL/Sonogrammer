@@ -35,12 +35,45 @@ Encoder::~Encoder()
 
 	av_packet_unref(&outputPacketA);
 	av_packet_unref(&outputPacketB);
+	
+	if (inputFrame)
+		av_frame_free(&inputFrame);
 }
 
-AVPacket* Encoder::Encode(const AVFrame& inputFrame)
+bool Encoder::DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId)
 {
-	if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, &inputFrame),
-		"Error sending audio frame to encoder"))
+	encoder = avcodec_find_encoder(codecId);
+	if (!encoder)
+	{
+		outStream << "Failed to find codec" << std::endl;
+		return false;
+	}
+	
+	stream = avformat_new_stream(outputFormatContext, encoder);
+	if (!stream)
+	{
+		outStream << "Failed to allocate stream" << std::endl;
+		return false;
+	}
+	stream->id = outputFormatContext->nb_streams - 1;
+	
+	encoderContext = avcodec_alloc_context3(encoder);
+	if (!encoderContext)
+	{
+		outStream << "Failed to allocate encoder context" << std::endl;
+		return false;
+	}
+	
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_to_context(encoderContext, stream->codecpar), "Failed to copy parameters to context"))
+		return false;
+	
+	return true;
+}
+
+AVPacket* Encoder::Encode()
+{
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, inputFrame),
+		"Error sending frame to encoder"))
 		return nullptr;
 
 	AVPacket* lastOutputPacket, *nextOutputPacket(nullptr);

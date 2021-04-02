@@ -32,61 +32,69 @@ VideoEncoder::VideoEncoder(std::ostream& outStream) : Encoder(outStream)
 {
 }
 
-bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsigned int& width, const unsigned int& height,
+VideoEncoder::~VideoEncoder()
+{
+	if (rgbFrame)
+		av_frame_free(&rgbFrame);
+		
+	if (pixelFormatConversionContext)
+		sws_freeContext(pixelFormatConversionContext);
+}
+
+bool VideoEncoder::Initialize(AVFormatContext* outputFormatContext, const unsigned int& width, const unsigned int& heightIn,
 	const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId)
 {
-	if (encoderContext)
-		avcodec_free_context(&encoderContext);
+	if (!DoBasicInitialization(outputFormatContext, codecId))
+		return false;
+		
+	height = heightIn;
 
 	pixelFormatConversionContext = sws_getContext(width, height, AV_PIX_FMT_RGB24, width, height, AV_PIX_FMT_YUV420P, SWS_BICUBIC, nullptr, nullptr, nullptr);
 
 	AVDictionary* videoOptions(nullptr);
-	encoder = avcodec_find_encoder(codecId);
 	/*av_dict_set(&videoOptions, "preset", "slow", 0);
-	av_dict_set(&videoOptions, "crf", "20", 0);
-	avcodec_get_context_defaults3(stream->codec, videoCodec);*/
-	encoderContext = avcodec_alloc_context3(encoder);
-	AVStream* videoStream(avformat_new_stream(outputFormatContext, encoder));
+	av_dict_set(&videoOptions, "crf", "20", 0);*/
+
 	encoderContext->width = width;
 	encoderContext->height = height;
 	encoderContext->pix_fmt = pixelFormat;
+	encoderContext->bit_rate = 400000;// TODO:  Justify choice or don't hardcode?
+	encoderContext->gop_size = 12;// TODO:  Justify choice or don't hardcode?  Has something to do with max spacing betwee "intraframes"
+	encoderContext->time_base.num = 1;
+	encoderContext->time_base.den = static_cast<int>(frameRate);// TODO:  Better to specify with AVRational?
 
-	avcodec_open2(encoderContext, encoder, &videoOptions);
-	videoStream->time_base.num = 1;
-	videoStream->time_base.den = static_cast<int>(frameRate);// TODO:  Better to specify with AVRational?
-	avcodec_parameters_from_context(videoStream->codecpar, encoderContext);
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, &videoOptions), "Failed to open video encoder"))
+		return false;
 
-	/*av_dump_format(outputContext, 0, fileName.c_str(), 1);
-	avio_open(&outputContext->pb, fileName.c_str(), AVIO_FLAG_WRITE);
-	avformat_write_header(outputContext, &videoOptions);*/
 	av_dict_free(&videoOptions);
+	
+	const int align(64);
 
-	AVFrame* rgbFrame;
 	rgbFrame = av_frame_alloc();
 	rgbFrame->format = AV_PIX_FMT_RGB24;
 	rgbFrame->width = width;
 	rgbFrame->height = height;
-	av_frame_get_buffer(rgbFrame, 1);
+	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(rgbFrame, align), "Failed to allocate rgb frame buffer"))
+		return false;
 
-	AVFrame* convertedFrame;
-	convertedFrame = av_frame_alloc();
-	convertedFrame->format = pixelFormat;
-	convertedFrame->width = width;
-	convertedFrame->height = height;
-	av_frame_get_buffer(convertedFrame, 1);
-
-	/*if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(encoderContext, encoder, nullptr), "Failed to open encoder"))
-		return false;*/
+	inputFrame = av_frame_alloc();
+	inputFrame->format = pixelFormat;
+	inputFrame->width = width;
+	inputFrame->height = height;
+	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(inputFrame, align), "Failed to allocate converted frame buffer"))
+		return false;
 
 	if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
 		encoderContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+		
+	if (LibCallWrapper::FFmpegErrorCheck(avcodec_parameters_from_context(stream->codecpar, encoderContext), "Failed to copy parameters to stream"))
+		return false;
 
 	return true;
 }
 
-AVFrame* VideoEncoder::ConvertFrame(AVFrame* in)
+bool VideoEncoder::ConvertFrame()
 {
-	pixelFormatConversionContext;
-	// TODO:  Implement
-	return in;
+	return !LibCallWrapper::FFmpegErrorCheck(sws_scale(pixelFormatConversionContext, rgbFrame->data, rgbFrame->linesize, 0,
+		height, inputFrame->data, inputFrame->linesize), "Failed to convert image");
 }

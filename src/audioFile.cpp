@@ -32,7 +32,6 @@ extern "C"
 
 AudioFile::AudioFile(const std::string& fileName) : fileName(fileName)
 {
-	av_register_all();
 	if (ProbeAudioFile())
 		ExtractSoundData();
 }

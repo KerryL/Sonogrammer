@@ -24,6 +24,10 @@ extern "C"
 // Standard C++ headers
 #include <ostream>
 
+// FFmpeg forward declarations
+struct AVStream;
+struct AVFormatContext;
+
 class Encoder
 {
 public:
@@ -31,17 +35,20 @@ public:
 	virtual ~Encoder();
 
 	// Derived classes are responsible for allocating the encoders and contexts
+	
+	AVStream* stream = nullptr;
+	AVCodec* encoder = nullptr;
+	AVFrame* inputFrame = nullptr;
 
-	AVPacket* Encode(const AVFrame& Frame);
-
-	AVCodec* GetCodec() { return encoder; }
+	AVPacket* Encode();
 
 protected:
 	std::ostream& outStream;
 
 	AVCodecContext* encoderContext = nullptr;
-	AVCodec* encoder = nullptr;
 	AVPacket outputPacketA, outputPacketB;
+	
+	bool DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId);// Must be called by derived class initialization methods
 };
 
 #endif// ENCODER_H_

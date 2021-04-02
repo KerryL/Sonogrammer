@@ -292,7 +292,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Range")));
 	innerSizer->Add(rangeText);
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Slize")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Slice")));
 	innerSizer->Add(timeSliceText);
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Size")));

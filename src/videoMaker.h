@@ -43,8 +43,8 @@ private:
 	std::string errorString;
 
 	wxImage GetFrameImage(const wxImage& wholeSonogram, const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;
-	AVFrame* ImageToAVFrame(const wxImage& image) const;
-	AVFrame* SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize) const;
+	void ImageToAVFrame(const wxImage& image, AVFrame*& frame) const;
+	void SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const;
 };
 
 #endif// VIDEO_MAKER_H_

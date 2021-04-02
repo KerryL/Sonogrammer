@@ -34,14 +34,18 @@ class VideoEncoder : public Encoder
 {
 public:
 	VideoEncoder(std::ostream& outStream);
+	~VideoEncoder();
 
 	bool Initialize(AVFormatContext* outputFormat, const unsigned int& width, const unsigned int& height,
 		const double& frameRate, const AVPixelFormat& pixelFormat, const AVCodecID& codecId);
 
-	AVFrame* ConvertFrame(AVFrame* in);
+	bool ConvertFrame();
+	
+	AVFrame* rgbFrame = nullptr;
 
 private:
-	SwsContext* pixelFormatConversionContext;
+	unsigned int height;
+	SwsContext* pixelFormatConversionContext = nullptr;
 };
 
 #endif// VIDEO_ENCODER_H_
