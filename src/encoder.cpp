@@ -24,8 +24,7 @@ extern "C"
 
 Encoder::Encoder(std::ostream& outStream) : outStream(outStream)
 {
-	av_init_packet(&outputPacketA);
-	av_init_packet(&outputPacketB);
+	av_init_packet(&outputPacket);
 }
 
 Encoder::~Encoder()
@@ -33,8 +32,7 @@ Encoder::~Encoder()
 	if (encoderContext)
 		avcodec_free_context(&encoderContext);
 
-	av_packet_unref(&outputPacketA);
-	av_packet_unref(&outputPacketB);
+	av_packet_unref(&outputPacket);
 	
 	if (inputFrame)
 		av_frame_free(&inputFrame);
@@ -74,46 +72,36 @@ bool Encoder::DoBasicInitialization(AVFormatContext* outputFormatContext, const 
 
 Encoder::Status Encoder::Encode(AVPacket& encodedPacket)
 {
-	if (inputFrame->nb_samples == 0)// video
-		inputFrame->pts = ptsCounter++;
-	else// audio
+	if (inputFrame)
 	{
-		inputFrame->pts = ptsCounter;
-		ptsCounter += inputFrame->nb_samples;
+		if (inputFrame->nb_samples == 0)// video
+			inputFrame->pts = ptsCounter++;
+		else// audio
+		{
+			inputFrame->pts = ptsCounter;
+			ptsCounter += inputFrame->nb_samples;
+		}
 	}
-		
-	if (LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, inputFrame),
+
+	if (!flushing && LibCallWrapper::FFmpegErrorCheck(avcodec_send_frame(encoderContext, inputFrame),
 		"Error sending frame to encoder"))
 		return Status::Error;
-
-	AVPacket* lastOutputPacket, *nextOutputPacket(nullptr);
-	bool nextPacketIsA(true);
-	int returnCode;
-	do
-	{
-		// Loop to ensure we're not growing a buffer inside ffmpeg
-		lastOutputPacket = nextOutputPacket;
-		nextPacketIsA = !nextPacketIsA;
-		if (nextPacketIsA)
-			nextOutputPacket = &outputPacketA;
-		else
-			nextOutputPacket = &outputPacketB;
-
-		returnCode = avcodec_receive_packet(encoderContext, nextOutputPacket);
-	} while (returnCode == 0);
-
-	if (returnCode != AVERROR(EAGAIN)/* || !lastOutputPacket*/)
-	{
-		LibCallWrapper::FFmpegErrorCheck(returnCode, "Failed to receive packet from encoder");
-		return Status::Error;
-	}
 	
-	if (lastOutputPacket)
+	if (!inputFrame)
+		flushing = true;
+
+	int returnCode(avcodec_receive_packet(encoderContext, &outputPacket));
+	if (returnCode == AVERROR(EAGAIN))
+		return Status::NeedMoreInput;
+	else if (returnCode == AVERROR_EOF)
+		return Status::Done;
+	else if (returnCode == 0)
 	{
-		av_packet_rescale_ts(lastOutputPacket, encoderContext->time_base, stream->time_base);
-		av_packet_ref(&encodedPacket, lastOutputPacket);
+		av_packet_rescale_ts(&outputPacket, encoderContext->time_base, stream->time_base);
+		av_packet_ref(&encodedPacket, &outputPacket);
 		return Status::HavePacket;
 	}
-
-	return Status::NeedMoreInput;
+	
+	LibCallWrapper::FFmpegErrorCheck(returnCode, "Failed to receive packet from encoder");
+	return Status::Error;
 }

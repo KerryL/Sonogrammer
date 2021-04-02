@@ -46,6 +46,7 @@ public:
 	{
 		HavePacket,
 		NeedMoreInput,
+		Done,
 		Error
 	};
 
@@ -53,8 +54,9 @@ public:
 
 protected:
 	std::ostream& outStream;
+	bool flushing = false;
 
-	AVPacket outputPacketA, outputPacketB;
+	AVPacket outputPacket;
 	int64_t ptsCounter;
 	
 	bool DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId);// Must be called by derived class initialization methods

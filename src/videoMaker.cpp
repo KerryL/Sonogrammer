@@ -189,17 +189,22 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	double time(0.0);
 	const double secondsPerPixel(soundData->GetDuration() / (wholeSonogram.GetWidth() - width + yAxisWidth));
 	const auto lineColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
-	while (time <= soundData->GetDuration())
+	while (true)
 	{
-		const auto image(GetFrameImage(wholeSonogram, baseFrame, maskedFooter, time, secondsPerPixel, lineColor));
-		ImageToAVFrame(image, videoEncoder.rgbFrame);
-		time += 1.0 / frameRate;
-
-		if (!videoEncoder.ConvertFrame())
+		if (time <= soundData->GetDuration())
 		{
-			FreeQueuedPackets(encodedVideo);
-			return false;
+			const auto image(GetFrameImage(wholeSonogram, baseFrame, maskedFooter, time, secondsPerPixel, lineColor));
+			ImageToAVFrame(image, videoEncoder.rgbFrame);
+			time += 1.0 / frameRate;
+
+			if (!videoEncoder.ConvertFrame())
+			{
+				FreeQueuedPackets(encodedVideo);
+				return false;
+			}
 		}
+		else
+			videoEncoder.inputFrame = nullptr;// Begin flushing
 			
 		AVPacket packet;
 		av_init_packet(&packet);
@@ -210,18 +215,27 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 			FreeQueuedPackets(encodedVideo);
 			return false;
 		}
+		
 		if (status == Encoder::Status::HavePacket)
 			encodedVideo.push(packet);
 		else
 			av_packet_unref(&packet);
+		
+		if (status == Encoder::Status::Done)
+			break;
 	}
 
 	// Encode the audio
 	unsigned int startSample(0);
-	while (startSample <= soundData->GetData().GetNumberOfPoints())
+	while (true)
 	{
-		SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize(), audioEncoder.inputFrame);
-		startSample += audioEncoder.GetFrameSize();
+		if (startSample <= soundData->GetData().GetNumberOfPoints())
+		{
+			SoundToAVFrame(startSample, *soundData, audioEncoder.GetFrameSize(), audioEncoder.inputFrame);
+			startSample += audioEncoder.GetFrameSize();
+		}
+		else
+			audioEncoder.inputFrame = nullptr;// Begin flushing
 
 		AVPacket packet;
 		av_init_packet(&packet);
@@ -237,6 +251,9 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 			encodedAudio.push(packet);
 		else
 			av_packet_unref(&packet);
+			
+		if (status == Encoder::Status::Done)
+			break;
 	}
 
 	while (!encodedAudio.empty() || !encodedVideo.empty())
