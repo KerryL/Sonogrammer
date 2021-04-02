@@ -18,6 +18,7 @@
 // wxWidgets headers
 #include <wx/listbox.h>
 #include <wx/valnum.h>
+#include <wx/filename.h>
 
 // SDL headers
 #include <SDL_version.h>
@@ -625,7 +626,7 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (!GetFFTParameters(parameters))
 		return;
 
-	wxFileDialog dialog(this, _T("Export Sonogram Video"), wxString(), wxString(),
+	wxFileDialog dialog(this, _T("Export Sonogram Video"), wxString(), wxFileName::StripExtension(wxFileName::FileName(audioFileName->GetValue()).GetFullName()) + _T(".mp4"),
 		_T("MP4 files (*.mp4)|*.mp4"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
