@@ -762,8 +762,12 @@ void MainFrame::UpdateFFTResolutionLimits()
 		resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
 	else
 	{
-		auto idealSliderPosition(log(currentTimeSlice * audioFile->GetSampleRate()) / log(2) - 1);
-		if (idealSliderPosition > resolutionSlider->GetMax())
+		double overlap;
+		if (!overlapTextBox->GetValue().ToDouble(&overlap))
+			return;
+
+		auto idealSliderPosition(log(currentTimeSlice * audioFile->GetSampleRate() / overlap) / log(2) - 1);
+		if (static_cast<int>(idealSliderPosition + 0.5) > resolutionSlider->GetMax())
 		{
 			wxMessageBox(_T("Warning:  Could not maintain desired time slice."), _T("Warning"));
 			resolutionSlider->SetValue(resolutionSlider->GetMax());
@@ -776,11 +780,11 @@ void MainFrame::UpdateFFTResolutionLimits()
 
 void MainFrame::UpdateSonogramInformation()
 {
-	timeMinText->SetValue(_T("0.0"));
-	timeMaxText->SetValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
+	timeMinText->ChangeValue(_T("0.0"));
+	timeMaxText->ChangeValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
 
-	frequencyMinText->SetValue(_T("0.0"));
-	frequencyMaxText->SetValue(wxString::Format(_T("%0.0f"), std::min(12000.0, audioFile->GetSampleRate() * 0.5)));
+	frequencyMinText->ChangeValue(_T("0.0"));
+	frequencyMaxText->ChangeValue(wxString::Format(_T("%0.0f"), std::min(12000.0, audioFile->GetSampleRate() * 0.5)));
 }
 
 void MainFrame::UpdateSonogram()
