@@ -44,13 +44,11 @@ wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData,
 	const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const
 {
 	const unsigned int sonogramWidth(width - yAxisWidth);
-	const unsigned int sonogramHeight(height - xAxisHeight - footerHeight);
 	const unsigned int sonogramWithXAxisHeight(height - footerHeight);
 	
 	// Create the sonogram (one pixel for every FFT slice)
 	SonogramGenerator generator(*soundData, parameters);
 	auto wholeSonogram(generator.GetImage(colorMap));
-	wholeSonogram.Rescale(std::max(static_cast<unsigned int>(wholeSonogram.GetWidth()), sonogramWidth), sonogramHeight, wxIMAGE_QUALITY_HIGH);
 	
 	// Scale the wholeSonogram for use as a footer in each frame
 	footer = wxImage(wholeSonogram.GetWidth() + sonogramWidth, wholeSonogram.GetHeight());
