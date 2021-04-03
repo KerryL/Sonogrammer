@@ -30,6 +30,7 @@ extern "C"
 #include <libavformat/version.h>
 #include <libavutil/version.h>
 #include <libswresample/version.h>
+#include <libswscale/version.h>
 #include <libavformat/avformat.h>
 }
 
@@ -186,6 +187,7 @@ wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 	versionString << LIBAVFORMAT_IDENT << '\n';
 	versionString << LIBAVUTIL_IDENT << '\n';
 	versionString << LIBSWRESAMPLE_IDENT << '\n';
+	versionString << LIBSWSCALE_IDENT << '\n';
 	versionString << "SDL v" << static_cast<int>(compiledVersion.major) << "."
 		<< static_cast<int>(compiledVersion.minor) << "."
 		<< static_cast<int>(compiledVersion.patch) << " (compiled); "
@@ -209,6 +211,7 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	stopButton = new wxButton(sizer->GetStaticBox(), idStopButton, _T("Stop"));
 	currentTimeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), wxID_ANY, _T("Include Filters in Playback"));
+	includeFiltersInPlayback->SetValue(true);
 
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
@@ -256,7 +259,13 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoHeight)));
-
+	
+	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Pixels/sec")));
+	pixPerSecLabel->SetToolTip(_T("Based on FFT window size"));
+	innerSizer->Add(pixPerSecLabel);
+	pixelsPerSecond = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxEmptyString);
+	innerSizer->Add(pixelsPerSecond);
+	
 	makeVideoButton = new wxButton(sizer->GetStaticBox(), idMakeVideo, _T("Make Video"));
 	makeVideoButton->Enable(false);
 	innerSizer->Add(makeVideoButton);
@@ -286,6 +295,8 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	rangeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	windowSizeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	overlapTextBox = new wxTextCtrl(sizer->GetStaticBox(), idFFT, _T("0.7"));
+	autoUpdateWindow = new wxCheckBox(sizer->GetStaticBox(), wxID_ANY, _T("Auto-update Time Slice"));
+	autoUpdateWindow->SetValue(true);
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Resolution (Hz)")));
 	innerSizer->Add(resolutionSlider, wxSizerFlags().Expand());
@@ -307,6 +318,8 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Size")));
 	innerSizer->Add(windowSizeText);
+	
+	innerSizer->Add(autoUpdateWindow);
 
 	return sizer;
 }
@@ -551,7 +564,21 @@ void MainFrame::UpdateFFTCalculatedInformation()
 		return;
 	}
 
-	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate()));
+	currentTimeSlice = GetTimeSlice();
+	timeSliceText->SetLabel(wxString::Format(_T("%0.3f sec"), currentTimeSlice));
+	pixelsPerSecond->SetLabel(wxString::Format(_T("%0.0f px/sec"), 1.0 / currentTimeSlice));
+}
+
+double MainFrame::GetTimeSlice() const
+{
+	if (!audioFile)
+		return 0.0;
+		
+	double overlap;
+	if (!overlapTextBox->GetValue().ToDouble(&overlap))
+		return 0.0;
+
+	return static_cast<double>(GetWindowSize()) / audioFile->GetSampleRate() * overlap;
 }
 
 void MainFrame::PlayButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -682,7 +709,7 @@ void MainFrame::UpdateAudioInformation()
 	const unsigned int minutes(static_cast<unsigned int>(audioFile->GetDuration()) / 60);
 	const double seconds(audioFile->GetDuration() - minutes * 60);
 	if (minutes > 0)
-		audioDurationText->SetLabel(wxString::Format(_T("%u:%0.2f"), minutes, seconds));
+		audioDurationText->SetLabel(wxString::Format(_T("%u:%2.2f"), minutes, seconds));
 	else if (seconds > 0.0)
 		audioDurationText->SetLabel(wxString::Format(_T("%0.2f s"), seconds));
 	else
@@ -727,7 +754,24 @@ void MainFrame::UpdateFFTResolutionLimits()
 	resolutionSlider->SetMin(0);// Min, then max, then min again to prevent GTK warning
 	resolutionSlider->SetMax(GetNumberOfResolutions());
 	resolutionSlider->SetMin(minSliderValue);
-	resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
+	
+	// Automatic resolution determination maintains a nice-looking image, but when making videos it can be desirable to use
+	// different values (because we don't need to see the entire sonogram at once and because we might want to achieve a
+	// specific scroll rate).
+	if (autoUpdateWindow->GetValue())
+		resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
+	else
+	{
+		auto idealSliderPosition(log(currentTimeSlice * audioFile->GetSampleRate()) / log(2) - 1);
+		if (idealSliderPosition > resolutionSlider->GetMax())
+		{
+			wxMessageBox(_T("Warning:  Could not maintain desired time slice."), _T("Warning"));
+			resolutionSlider->SetValue(resolutionSlider->GetMax());
+		}
+		else
+			resolutionSlider->SetValue(idealSliderPosition);
+	}
+	currentTimeSlice = GetTimeSlice();
 }
 
 void MainFrame::UpdateSonogramInformation()

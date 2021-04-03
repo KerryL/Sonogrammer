@@ -85,6 +85,7 @@ private:
 	wxStaticText* rangeText;
 	wxStaticText* windowSizeText;
 	wxTextCtrl* overlapTextBox;
+	wxCheckBox* autoUpdateWindow;
 
 	wxTextCtrl* timeMaxText;
 	wxTextCtrl* timeMinText;
@@ -96,6 +97,7 @@ private:
 	wxStaticText* cursorFrequencyText;
 
 	wxButton* makeVideoButton;
+	wxStaticText* pixelsPerSecond;
 
 	// The event IDs
 	enum MainFrameEventID
@@ -172,6 +174,8 @@ private:
 	unsigned int GetNumberOfResolutions() const;
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
+	double GetTimeSlice() const;
+	double currentTimeSlice = 0.0;
 
 	static Filter GetFilter(const FilterParameters &parameters,
 		const double &sampleRate);
