@@ -19,6 +19,7 @@
 #include <wx/listbox.h>
 #include <wx/valnum.h>
 #include <wx/filename.h>
+#include <wx/fileconf.h>
 
 // SDL headers
 #include <SDL_version.h>
@@ -37,6 +38,7 @@ extern "C"
 // Standard C++ headers
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <sstream>
 
 MainFrame::MainFrame() : wxFrame(NULL, wxID_ANY, wxEmptyString,
 	wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE), audioRenderer(GetEventHandler())
@@ -132,25 +134,26 @@ void MainFrame::CreateControls()
 
 wxSizer* MainFrame::CreatePrimaryControls(wxWindow* parent)
 {
-	wxFlexGridSizer* sizer(new wxFlexGridSizer(4, wxSize(5, 5)));
+	wxSizer* sizer(new wxBoxSizer(wxVERTICAL));
+	
+	wxSizer* fileNameSizer(new wxBoxSizer(wxHORIZONTAL));
+	wxSizer* configSizer(new wxBoxSizer(wxHORIZONTAL));
+	sizer->Add(fileNameSizer, wxSizerFlags().Expand());
+	sizer->Add(configSizer);
 
+	const int padding(3);
 	audioFileName = new wxTextCtrl(parent, idPrimaryControl);
 	openAudioFileButton = new wxButton(parent, idButtonLoadAudioFile, _T("Open"));
-	sizer->Add(new wxStaticText(parent, wxID_ANY, _T("Audio File Name")));
-	sizer->Add(audioFileName, wxSizerFlags().Expand());
-	sizer->Add(openAudioFileButton);
-	sizer->AddStretchSpacer();
+	fileNameSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Audio File Name")), wxSizerFlags().Border(wxALL, 5));
+	fileNameSizer->Add(audioFileName, wxSizerFlags().Expand().Border(wxALL, padding));
+	fileNameSizer->Add(openAudioFileButton, wxSizerFlags().Border(wxALL, padding));
 
-	sonogramConfigFileName = new wxTextCtrl(parent, wxID_ANY);
-	openConfigFileButton = new wxButton(parent, idButtonLoadSonogramConfig, _T("Open"));
-	saveConfigFileButton = new wxButton(parent, idButtonSaveSonogramConfig, _T("Save"));
-	sizer->Add(new wxStaticText(parent, idPrimaryControl, _T("Config File Name")));
-	sizer->Add(sonogramConfigFileName, wxSizerFlags().Expand());
-	sizer->Add(openConfigFileButton);
-	sizer->Add(saveConfigFileButton);
-
+	openConfigFileButton = new wxButton(parent, idButtonLoadSonogramConfig, _T("Load Config"));
+	saveConfigFileButton = new wxButton(parent, idButtonSaveSonogramConfig, _T("Save Config"));
 	exportSonogramImageButton = new wxButton(parent, idExportSonogramImage, _T("Export Sonogram"));
-	sizer->Add(exportSonogramImageButton);
+	configSizer->Add(openConfigFileButton, wxSizerFlags().Border(wxALL, padding));
+	configSizer->Add(saveConfigFileButton, wxSizerFlags().Border(wxALL, padding));
+	configSizer->Add(exportSonogramImageButton, wxSizerFlags().Border(wxALL, padding));
 
 	return sizer;
 }
@@ -165,10 +168,10 @@ wxSizer* MainFrame::CreateFilterControls(wxWindow* parent)
 
 	buttonSizer->AddStretchSpacer();
 	buttonSizer->Add(addFilterButton, wxSizerFlags().Border(wxRIGHT | wxLEFT, 5));
-	buttonSizer->Add(removeFilterButton, wxSizerFlags().Border(wxBOTTOM, 5));
+	buttonSizer->Add(removeFilterButton, wxSizerFlags().Border(wxRIGHT, 5));
 
 	filterList = new wxListBox(sizer->GetStaticBox(), wxID_ANY, wxDefaultPosition, wxDefaultSize);
-	sizer->Add(filterList, wxSizerFlags().Expand().Proportion(1));
+	sizer->Add(filterList, wxSizerFlags().Expand().Proportion(1).Border(wxALL, 5));
 
 	return sizer;
 }
@@ -408,12 +411,101 @@ void MainFrame::LoadFile(const wxString& fileName)
 
 void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	wxFileDialog dialog(this, _T("Load Configuration"), wxString(), wxString(),
+		_T("Sonogram files (*.sgram)|*.sgram"), wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+	
+	wxFileConfig config(wxEmptyString, wxEmptyString, dialog.GetPath());
+	
+	bool tempBool;
+	if (config.Read(_T("audio/includeFilters"), &tempBool))
+		includeFiltersInPlayback->SetValue(tempBool);
+	
+	wxString tempString;
+	if (config.Read(_T("fft/windowFunction"), &tempString))
+		windowComboBox->SetValue(tempString);
+	if (config.Read(_T("fft/overlap"), &tempString))
+		overlapTextBox->SetValue(tempString);
+	if (config.Read(_T("fft/autoUpdateTimeSlice"), &tempBool))
+		autoUpdateWindow->SetValue(tempBool);
+	config.Read(_T("fft/timeSlice"), &currentTimeSlice, 0.0);
+		
+	if (config.Read(_T("sonogram/logarithmicFrequencyRange"), &tempBool))
+		logarithmicFrequencyCheckBox->SetValue(tempBool);
+	if (config.Read(_T("sonogram/colorMap"), &tempString))
+		colorMap = DeserializeColorMap(tempString);
+	
+	long tempLong;
+	config.Read(_T("video/width"), &tempLong, videoWidth);
+	videoWidth = tempLong;
+	config.Read(_T("video/height"), &tempLong, videoHeight);
+	videoHeight = tempLong;
+	
+	TransferDataToWindow();
 }
 
 void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	// TODO:  Implement
+	wxFileDialog dialog(this, _T("Save Configuration"), wxString(), wxString(),
+		_T("Sonogram files (*.sgram)|*.sgram"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+	
+	TransferDataFromWindow();
+	wxFileConfig config(wxEmptyString, wxEmptyString, dialog.GetPath());
+	
+	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
+	
+	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
+	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
+	config.Write(_T("fft/autoUpdateTimeSlice"), autoUpdateWindow->GetValue());
+	if (autoUpdateWindow->GetValue())
+		config.Write(_T("fft/timeSlice"), currentTimeSlice);
+	else
+		config.Write(_T("fft/timeSlice"), 0.0);
+		
+	config.Write(_T("sonogram/logarithmicFrequencyRange"), logarithmicFrequencyCheckBox->GetValue());
+	config.Write(_T("sonogram/colorMap"), SerializeColorMap(colorMap));
+	
+	config.Write(_T("video/width"), videoWidth);
+	config.Write(_T("video/height"), videoHeight);
+}
+
+wxString MainFrame::SerializeColorMap(const SonogramGenerator::ColorMap& colorMap)
+{
+	std::ostringstream ss;
+	auto it(colorMap.begin());
+	for (; it != colorMap.end(); ++it)
+		ss << it->magnitude << ',' << it->color.GetRGB() << ';';
+	return ss.str();
+}
+
+SonogramGenerator::ColorMap MainFrame::DeserializeColorMap(const wxString& s)
+{
+	SonogramGenerator::ColorMap map;
+	
+	std::string segment;
+	std::istringstream ss(s.ToStdString());
+	while (std::getline(ss, segment, ';'))
+	{
+		std::istringstream ssSegment(segment);
+		std::string token;
+		SonogramGenerator::MagnitudeColor entry;
+		if ((ssSegment >> entry.magnitude).fail())
+			break;
+			
+		if (ssSegment.peek() != ',')
+			break;
+		ssSegment.ignore();
+		wxUint32 colorValue;
+		if ((ssSegment >> colorValue).fail())
+			break;
+		entry.color.SetRGB(colorValue);
+		map.insert(entry);
+	}
+
+	return map;
 }
 
 void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
@@ -658,6 +750,8 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
 
+	TransferDataFromWindow();
+std::cout << videoWidth << std::endl;
 	VideoMaker videoMaker(videoWidth, videoHeight);
 	videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString());
 }
@@ -758,7 +852,7 @@ void MainFrame::UpdateFFTResolutionLimits()
 	// Automatic resolution determination maintains a nice-looking image, but when making videos it can be desirable to use
 	// different values (because we don't need to see the entire sonogram at once and because we might want to achieve a
 	// specific scroll rate).
-	if (autoUpdateWindow->GetValue())
+	if (autoUpdateWindow->GetValue() || currentTimeSlice == 0.0)
 		resolutionSlider->SetValue(resolutionSlider->GetMin() + (resolutionSlider->GetMax() - resolutionSlider->GetMin()) / 2);
 	else
 	{

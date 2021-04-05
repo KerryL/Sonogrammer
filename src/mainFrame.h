@@ -56,7 +56,6 @@ private:
 	StaticImage* sonogramImage;
 
 	wxTextCtrl* audioFileName;
-	wxTextCtrl* sonogramConfigFileName;
 	wxButton* openAudioFileButton;
 	wxButton* openConfigFileButton;
 	wxButton* saveConfigFileButton;
@@ -168,6 +167,8 @@ private:
 	std::vector<FilterParameters> filterParameters;
 
 	SonogramGenerator::ColorMap colorMap;
+	static wxString SerializeColorMap(const SonogramGenerator::ColorMap& colorMap);
+	static SonogramGenerator::ColorMap DeserializeColorMap(const wxString& s);
 
 	bool GetFFTParameters(SonogramGenerator::FFTParameters& parameters);
 
