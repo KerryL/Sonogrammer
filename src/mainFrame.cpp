@@ -199,7 +199,7 @@ wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 		<< static_cast<int>(linkedVersion.patch) << " (linked)";
 	wxStaticText* versionText(new wxStaticText(parent, wxID_ANY, versionString));
 	versionText->SetToolTip(_T("This software uses libraries from the FFmpeg project under the LGPLv2.1 license and libraries from the SDL project under the zlib license"));
-	sizer->Add(versionText);
+	sizer->Add(versionText, wxSizerFlags().Border(wxALL, 3));
 	return sizer;
 }
 
@@ -226,10 +226,8 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	timeSizer->Add(currentTimeText, wxSizerFlags().Border(wxLEFT, 5));
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
 
-	sizer->AddSpacer(15);
-
 	wxFlexGridSizer* audioInfoSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
-	sizer->Add(audioInfoSizer);
+	sizer->Add(audioInfoSizer, wxSizerFlags().Border(wxALL, 5));
 
 	audioDurationText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
 	audioSampleRateText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T(""));
@@ -255,7 +253,7 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Video")));
 	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
-	sizer->Add(innerSizer);
+	sizer->Add(innerSizer, wxSizerFlags().Border(wxALL, 5));
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Width")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoWidth)));
@@ -263,7 +261,7 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoHeight)));
 	
-	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Pixels/sec")));
+	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("X Scale")));
 	pixPerSecLabel->SetToolTip(_T("Based on FFT window size"));
 	innerSizer->Add(pixPerSecLabel);
 	pixelsPerSecond = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxEmptyString);
@@ -280,7 +278,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("FFT")));
 	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5,5)));
-	sizer->Add(innerSizer);
+	sizer->Add(innerSizer, wxSizerFlags().Border(wxALL, 5));
 
 	resolutionSlider = new wxSlider(sizer->GetStaticBox(), idFFT, 1, 0, 1, wxDefaultPosition, wxDefaultSize);
 	resolutionText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
@@ -331,7 +329,7 @@ wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Sonogram")));
 	wxFlexGridSizer* upperSizer(new wxFlexGridSizer(4, wxSize(5,5)));
-	sizer->Add(upperSizer);
+	sizer->Add(upperSizer, wxSizerFlags().Border(wxALL, 5));
 
 	upperSizer->AddStretchSpacer();
 	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
@@ -359,7 +357,7 @@ wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 	sizer->Add(editColorMapButton, wxSizerFlags().Border(wxALL, 5));
 
 	wxGridSizer* cursoInfoSizer(new wxGridSizer(3, wxSize(5, 5)));
-	sizer->Add(cursoInfoSizer);
+	sizer->Add(cursoInfoSizer, wxSizerFlags().Border(wxALL, 5));
 	cursorTimeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	cursorFrequencyText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 
