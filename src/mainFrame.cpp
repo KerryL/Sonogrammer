@@ -682,7 +682,11 @@ void MainFrame::ApplyNormalization()
 	if (!GetNormalizationTimeValues(startTime, endTime))
 		return;
 
-	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+	double normStartTime, normEndTime;
+	if (!GetNormalizationTimeValues(normStartTime, normEndTime))
+		return;
+
+	auto segmentData(filteredSoundData->ExtractSegment(std::max(startTime, normStartTime), std::min(endTime, normEndTime)));
 
 	Normalizer normalizer;
 	const double targetPower(-3.0);// [dB]
