@@ -679,7 +679,7 @@ void MainFrame::ApplyFilters()
 void MainFrame::ApplyNormalization()
 {
 	double startTime, endTime;
-	if (!GetNormalizationTimeValues(startTime, endTime))
+	if (!GetTimeValues(startTime, endTime))
 		return;
 
 	double normStartTime, normEndTime;
