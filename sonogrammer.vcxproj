@@ -170,6 +170,8 @@
     <ClCompile Include="src\videoEncoder.cpp" />
     <ClCompile Include="src\videoMaker.cpp" />
     <ClCompile Include="src\muxer.cpp" />
+    <ClCompile Include="src\normalizer.cpp" />
+    <ClCompile Include="src\waveFormGenerator.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\audioEncoder.h" />
@@ -194,6 +196,8 @@
     <ClInclude Include="src\videoEncoder.h" />
     <ClInclude Include="src\videoMaker.h" />
     <ClInclude Include="src\muxer.h" />
+    <ClInclude Include="src\normalizer.h" />
+    <ClInclude Include="src\waveFormGenerator.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

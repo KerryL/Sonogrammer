@@ -54,6 +54,8 @@ public:
 	static wxColor GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,
 		const wxColor& upperColor, const double& upperValue, const double& value);
 
+	static wxColor GetScaledColorFromMap(const DatasetType& sclaedMagnitude, const ColorMap& colorMap);
+
 private:
 	const SoundData& soundData;
 	const FFTParameters parameters;

@@ -16,7 +16,7 @@ class StaticImage : public wxPanel
 {
 public:
 	StaticImage(wxWindow* parent, MainFrame& mainFrame, wxWindowID id, const unsigned int& width,
-		const unsigned int& height);
+		const unsigned int& height, const bool& hasFrequencyAxis);
 	void SetImage(wxImage&& newImage);
 	void Reset();
 	void ExportToFile(const wxString& fileName) const;
@@ -32,6 +32,7 @@ private:
 	wxBitmap resizedImage;
 	int width = -1;
 	int height = -1;
+	const bool hasFrequencyAxis;
 
 	wxColor markerColor = wxColor(255, 255, 255);
 	bool cursorVisible = false;

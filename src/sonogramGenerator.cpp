@@ -61,9 +61,8 @@ wxImage SonogramGenerator::GetImage(const ColorMap& colorMap) const
 	return sonogram;
 }
 
-wxColor SonogramGenerator::GetColorFromMap(const DatasetType& magnitude, const ColorMap& colorMap) const
+wxColor SonogramGenerator::GetScaledColorFromMap(const DatasetType& scaledMagnitude, const ColorMap& colorMap)
 {
-	const DatasetType scaledMagnitude(GetScaledMagnitude(magnitude));
 	MagnitudeColor lower, upper;
 	bool foundLower(false);
 	for (const auto& c : colorMap)
@@ -81,6 +80,12 @@ wxColor SonogramGenerator::GetColorFromMap(const DatasetType& magnitude, const C
 	}
 
 	return GetInterpolatedColor(lower.color, lower.magnitude, upper.color, upper.magnitude, scaledMagnitude);
+}
+
+wxColor SonogramGenerator::GetColorFromMap(const DatasetType& magnitude, const ColorMap& colorMap) const
+{
+	const DatasetType scaledMagnitude(GetScaledMagnitude(magnitude));
+	return GetScaledColorFromMap(scaledMagnitude, colorMap);
 }
 
 wxColor SonogramGenerator::GetInterpolatedColor(const wxColor& lowerColor, const double& lowerValue,

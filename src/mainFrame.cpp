@@ -14,6 +14,8 @@
 #include "colorMapDialog.h"
 #include "dropTarget.h"
 #include "videoMaker.h"
+#include "waveFormGenerator.h"
+#include "normalizer.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
@@ -80,6 +82,8 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_BUTTON(idAddFilter,							MainFrame::AddFilterButtonClickedEvent)
 	EVT_BUTTON(idRemoveFilter,						MainFrame::RemoveFilterButtonClickedEvent)
 	EVT_LISTBOX_DCLICK(wxID_ANY,					MainFrame::FilterListDoubleClickEvent)
+	EVT_CHECKBOX(idNormalization,					MainFrame::NormalizationSettingsChangedEvent)
+	EVT_TEXT(idNormalization,						MainFrame::NormalizationSettingsChangedEvent)
 	EVT_BUTTON(idPlayButton,						MainFrame::PlayButtonClickedEvent)
 	EVT_BUTTON(idPauseButton,						MainFrame::PauseButtonClickedEvent)
 	EVT_BUTTON(idStopButton,						MainFrame::StopButtonClickedEvent)
@@ -115,8 +119,14 @@ void MainFrame::CreateControls()
 	wxBoxSizer* rightSizer(new wxBoxSizer(wxVERTICAL));
 	mainSizer->Add(rightSizer, wxSizerFlags().Expand().Proportion(1));
 
-	sonogramImage = new StaticImage(panel, *this, wxID_ANY, 600, 200);
+	sonogramImage = new StaticImage(panel, *this, wxID_ANY, 600, 200, true);
 	rightSizer->Add(sonogramImage, wxSizerFlags().Expand().Proportion(1));
+
+	rightSizer->AddSpacer(5);
+
+	const double heightRatio(0.2);
+	waveFormImage = new StaticImage(panel, *this, wxID_ANY, sonogramImage->GetMinWidth(), heightRatio * sonogramImage->GetMinHeight(), false);
+	rightSizer->Add(waveFormImage, wxSizerFlags().Expand().Proportion(heightRatio));
 
 	wxBoxSizer* rightBottomSizer(new wxBoxSizer(wxHORIZONTAL));
 	rightSizer->Add(rightBottomSizer);
@@ -215,6 +225,11 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	currentTimeText = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxString());
 	includeFiltersInPlayback = new wxCheckBox(sizer->GetStaticBox(), wxID_ANY, _T("Include Filters in Playback"));
 	includeFiltersInPlayback->SetValue(true);
+	applyNormalization = new wxCheckBox(sizer->GetStaticBox(), idNormalization, _T("Normalize Audio"));
+	applyNormalization->SetValue(true);
+
+	normalizationReferenceTimeMin = new wxTextCtrl(sizer->GetStaticBox(), idNormalization);
+	normalizationReferenceTimeMax = new wxTextCtrl(sizer->GetStaticBox(), idNormalization);
 
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
@@ -224,7 +239,18 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	sizer->Add(timeSizer, wxSizerFlags().Border(wxALL, 5));
 	timeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Position")));
 	timeSizer->Add(currentTimeText, wxSizerFlags().Border(wxLEFT, 5));
+
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
+	sizer->Add(applyNormalization, wxSizerFlags().Border(wxALL, 5));
+
+	wxFlexGridSizer* normalizationTimeSizer(new wxFlexGridSizer(3, 5, 5));
+	sizer->Add(normalizationTimeSizer, wxSizerFlags().Border(wxALL, 5));
+	normalizationTimeSizer->AddStretchSpacer();
+	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
+	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Max")));
+	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Reference Time (sec)")));
+	normalizationTimeSizer->Add(normalizationReferenceTimeMin);
+	normalizationTimeSizer->Add(normalizationReferenceTimeMax);
 
 	wxFlexGridSizer* audioInfoSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
 	sizer->Add(audioInfoSizer, wxSizerFlags().Border(wxALL, 5));
@@ -255,10 +281,10 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
 	sizer->Add(innerSizer, wxSizerFlags().Border(wxALL, 5));
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Width")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Width (px)")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoWidth)));
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height (px)")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoHeight)));
 	
 	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("X Scale")));
@@ -266,6 +292,12 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 	innerSizer->Add(pixPerSecLabel);
 	pixelsPerSecond = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxEmptyString);
 	innerSizer->Add(pixelsPerSecond);
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Audio Bit Rate (kb/s)")));
+	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&audioBitRate)));
+
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Video Bit Rate (kb/s)")));
+	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoBitRate)));
 	
 	makeVideoButton = new wxButton(sizer->GetStaticBox(), idMakeVideo, _T("Make Video"));
 	makeVideoButton->Enable(false);
@@ -308,7 +340,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Function")));
 	innerSizer->Add(windowComboBox);
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Overlap")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Overlap Factor")));
 	innerSizer->Add(overlapTextBox);
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Range")));
@@ -328,27 +360,24 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 wxSizer* MainFrame::CreateImageControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Sonogram")));
-	wxFlexGridSizer* upperSizer(new wxFlexGridSizer(4, wxSize(5,5)));
+	wxFlexGridSizer* upperSizer(new wxFlexGridSizer(3, wxSize(5,5)));
 	sizer->Add(upperSizer, wxSizerFlags().Border(wxALL, 5));
 
 	upperSizer->AddStretchSpacer();
 	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
 	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Max")));
-	upperSizer->AddStretchSpacer();
 
 	timeMinText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
 	timeMaxText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
-	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Range")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Time Range (sec)")));
 	upperSizer->Add(timeMinText);
 	upperSizer->Add(timeMaxText);
-	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("sec")));
 
 	frequencyMinText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
 	frequencyMaxText = new wxTextCtrl(sizer->GetStaticBox(), idImageControl);
-	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Frequency Range")));
+	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Frequency Range (Hz)")));
 	upperSizer->Add(frequencyMinText);
 	upperSizer->Add(frequencyMaxText);
-	upperSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Hz")));
 
 	logarithmicFrequencyCheckBox = new wxCheckBox(sizer->GetStaticBox(), idImageControl, _T("Logarithmic Frequency Scale"));
 	sizer->Add(logarithmicFrequencyCheckBox, wxSizerFlags().Border(wxALL, 5));
@@ -419,6 +448,8 @@ void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	bool tempBool;
 	if (config.Read(_T("audio/includeFilters"), &tempBool))
 		includeFiltersInPlayback->SetValue(tempBool);
+	if (config.Read(_T("audio/applyNormalization"), &tempBool))
+		applyNormalization->SetValue(tempBool);
 	
 	wxString tempString;
 	if (config.Read(_T("fft/windowFunction"), &tempString))
@@ -439,6 +470,10 @@ void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	videoWidth = tempLong;
 	config.Read(_T("video/height"), &tempLong, videoHeight);
 	videoHeight = tempLong;
+	config.Read(_T("video/audioBitRate"), &tempLong, audioBitRate);
+	audioBitRate = tempLong;
+	config.Read(_T("video/videoBitRate"), &tempLong, videoBitRate);
+	videoBitRate = tempLong;
 	
 	TransferDataToWindow();
 }
@@ -454,6 +489,7 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	wxFileConfig config(wxEmptyString, wxEmptyString, dialog.GetPath());
 	
 	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
+	config.Write(_T("audio/applyNormalization"), applyNormalization->GetValue());
 	
 	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
 	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
@@ -468,6 +504,8 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	
 	config.Write(_T("video/width"), videoWidth);
 	config.Write(_T("video/height"), videoHeight);
+	config.Write(_T("video/audioBitRate"), audioBitRate);
+	config.Write(_T("video/videoBitRate"), videoBitRate);
 }
 
 wxString MainFrame::SerializeColorMap(const SonogramGenerator::ColorMap& colorMap)
@@ -538,6 +576,7 @@ void MainFrame::AddFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 	ApplyFilters();
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 Filter MainFrame::GetFilter(const FilterParameters &parameters, const double &sampleRate)
@@ -574,6 +613,7 @@ void MainFrame::RemoveFilterButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 
 	ApplyFilters();
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& WXUNUSED(event))
@@ -596,13 +636,18 @@ void MainFrame::FilterListDoubleClickEvent(wxCommandEvent& WXUNUSED(event))
 
 	ApplyFilters();
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 void MainFrame::ImageTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
+	if (!ValidateInputs())
+		return;
+
 	UpdateFFTInformation();
 	ApplyFilters();
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -615,6 +660,7 @@ void MainFrame::EditColorMapButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	sonogramImage->SetMarkerColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 	assert(colorMap.size() > 1);
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 void MainFrame::ApplyFilters()
@@ -625,6 +671,33 @@ void MainFrame::ApplyFilters()
 	filteredSoundData = std::make_unique<SoundData>(*originalSoundData);
 	for (auto& f : filters)
 		filteredSoundData = filteredSoundData->ApplyFilter(f);
+
+	if (applyNormalization->GetValue())
+		ApplyNormalization();
+}
+
+void MainFrame::ApplyNormalization()
+{
+	double startTime, endTime;
+	if (!GetNormalizationTimeValues(startTime, endTime))
+		return;
+
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+
+	Normalizer normalizer;
+	const double targetPower(-3.0);// [dB]
+	const auto gainFactor(normalizer.ComputeGainFactor(*segmentData, targetPower, Normalizer::Method::Peak/*AWeighted*/));
+	normalizer.Normalize(*filteredSoundData, gainFactor);
+}
+
+void MainFrame::NormalizationSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	const bool enableRefTimeControls(applyNormalization->GetValue() && !audioFileName->GetValue().IsEmpty());
+	normalizationReferenceTimeMin->Enable(enableRefTimeControls);
+	normalizationReferenceTimeMax->Enable(enableRefTimeControls);
+
+	ApplyFilters();
+	UpdateWaveForm();
 }
 
 void MainFrame::FFTSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
@@ -749,9 +822,14 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 		return;
 
 	TransferDataFromWindow();
-std::cout << videoWidth << std::endl;
-	VideoMaker videoMaker(videoWidth, videoHeight);
-	videoMaker.MakeVideo(filteredSoundData, parameters, colorMap, dialog.GetPath().ToStdString());
+
+	double startTime, endTime;
+	if (!GetTimeValues(startTime, endTime))
+		return;
+
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+	VideoMaker videoMaker(videoWidth, videoHeight, audioBitRate * 1000, videoBitRate * 1000);
+	videoMaker.MakeVideo(segmentData, parameters, colorMap, dialog.GetPath().ToStdString());
 }
 
 void MainFrame::HandleNewAudioFile()
@@ -787,6 +865,7 @@ void MainFrame::HandleNewAudioFile()
 	UpdateFilterSampleRates();
 	ApplyFilters();
 	UpdateSonogram();
+	UpdateWaveForm();
 }
 
 void MainFrame::UpdateFilterSampleRates()
@@ -877,6 +956,9 @@ void MainFrame::UpdateSonogramInformation()
 
 	frequencyMinText->ChangeValue(_T("0.0"));
 	frequencyMaxText->ChangeValue(wxString::Format(_T("%0.0f"), std::min(12000.0, audioFile->GetSampleRate() * 0.5)));
+
+	normalizationReferenceTimeMin->ChangeValue(_T("0.0"));
+	normalizationReferenceTimeMax->ChangeValue(wxString::Format(_T("%f"), audioFile->GetDuration()));
 }
 
 void MainFrame::UpdateSonogram()
@@ -895,8 +977,27 @@ void MainFrame::UpdateSonogram()
 	if (!GetFFTParameters(parameters))
 		return;
 
-	SonogramGenerator generator(*filteredSoundData->ExtractSegment(startTime, endTime), parameters);
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+	SonogramGenerator generator(*segmentData, parameters);
 	sonogramImage->SetImage(generator.GetImage(colorMap));
+}
+
+void MainFrame::UpdateWaveForm()
+{
+	if (!filteredSoundData || !ImageInformationComplete())
+		return;
+
+	double startTime, endTime;
+	if (!GetTimeValues(startTime, endTime))
+		return;
+
+	if (endTime <= startTime)
+		return;// Could be in the middle of typing a number
+
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+	WaveFormGenerator generator(*segmentData);
+	waveFormImage->SetImage(generator.GetImage(waveFormImage->GetSize().GetWidth(), waveFormImage->GetSize().GetHeight(),
+		SonogramGenerator::GetScaledColorFromMap(0.0, colorMap), SonogramGenerator::GetScaledColorFromMap(1.0, colorMap)));
 }
 
 bool MainFrame::GetFFTParameters(SonogramGenerator::FFTParameters& parameters)
@@ -925,7 +1026,21 @@ bool MainFrame::GetFFTParameters(SonogramGenerator::FFTParameters& parameters)
 	return true;
 }
 
-unsigned int MainFrame::GetNumberOfResolutions() const
+bool MainFrame::ValidateInputs()
+{
+	bool ok(true);
+	double startTime, endTime;
+	if (!GetTimeValues(startTime, endTime))
+		ok = false;
+
+	double minFreq, maxFreq;
+	if (!GetFrequencyValues(minFreq, maxFreq))
+		ok = false;
+
+	return ok;
+}
+
+unsigned int MainFrame::GetNumberOfResolutions()
 {
 	double startTime, endTime;
 	if (!GetTimeValues(startTime, endTime))
@@ -933,10 +1048,7 @@ unsigned int MainFrame::GetNumberOfResolutions() const
 
 	const double currentDuration(endTime - startTime);
 	if (currentDuration <= 0.0)
-	{
-		wxMessageBox(_T("Invalid segment duration."));
 		return 0;
-	}
 
 	const unsigned int numberOfPoints(currentDuration * audioFile->GetSampleRate());
 	return FastFourierTransform::GetMaxPowerOfTwo(numberOfPoints) - 1;
@@ -950,36 +1062,52 @@ bool MainFrame::ImageInformationComplete() const
 		!frequencyMaxText->GetValue().IsEmpty();
 }
 
-bool MainFrame::GetTimeValues(double& minTime, double& maxTime) const
+bool MainFrame::GetTimeValues(double& minTime, double& maxTime)
 {
-	if (!timeMinText->GetValue().ToDouble(&minTime))
-	{
-		wxMessageBox(_T("Failed to parse minimum time."));
-		return false;
-	}
-	else if (!timeMaxText->GetValue().ToDouble(&maxTime))
-	{
-		wxMessageBox(_T("Failed to parse maximum time."));
-		return false;
-	}
-
-	return true;
+	return GetMinMaxValues(minTime, maxTime, timeMinText, timeMaxText);
 }
 
-bool MainFrame::GetFrequencyValues(double& minFrequency, double& maxFrequency) const
+bool MainFrame::GetFrequencyValues(double& minFrequency, double& maxFrequency)
 {
-	if (!frequencyMinText->GetValue().ToDouble(&minFrequency))
+	return GetMinMaxValues(minFrequency, maxFrequency, frequencyMinText, frequencyMaxText);
+}
+
+bool MainFrame::GetNormalizationTimeValues(double& minTime, double& maxTime)
+{
+	return GetMinMaxValues(minTime, maxTime, normalizationReferenceTimeMin, normalizationReferenceTimeMax);
+}
+
+bool MainFrame::GetMinMaxValues(double& minValue, double& maxValue, wxTextCtrl* minTextCtrl, wxTextCtrl* maxTextCtrl)
+{
+	bool minOK(true), maxOK(true);
+	if (!minTextCtrl->GetValue().ToDouble(&minValue))
+		minOK = false;
+
+	if (!maxTextCtrl->GetValue().ToDouble(&maxValue))
+		maxOK = false;
+
+	if (minOK && maxOK)
 	{
-		wxMessageBox(_T("Failed to parse minimum frequency."));
-		return false;
-	}
-	else if (!frequencyMaxText->GetValue().ToDouble(&maxFrequency))
-	{
-		wxMessageBox(_T("Failed to parse maximum frequency."));
-		return false;
+		if (minValue >= maxValue)
+		{
+			minOK = false;
+			maxOK = false;
+		}
 	}
 
-	return true;
+	SetTextCtrlBackground(minTextCtrl, !minOK);
+	SetTextCtrlBackground(maxTextCtrl, !maxOK);
+	Refresh();
+
+	return minOK && maxOK;
+}
+
+void MainFrame::SetTextCtrlBackground(wxTextCtrl* textCtrl, const bool& highlight)
+{
+	if (highlight)
+		textCtrl->SetBackgroundColour(*wxYELLOW);
+	else
+		textCtrl->SetBackgroundColour(audioFileName->GetBackgroundColour());// Kind of a hacky way to do it, but it works
 }
 
 double MainFrame::GetResolution() const
@@ -1005,6 +1133,8 @@ void MainFrame::EnableFileDependentControls()
 	timeMaxText->Enable();
 	frequencyMinText->Enable();
 	frequencyMaxText->Enable();
+	normalizationReferenceTimeMin->Enable();
+	normalizationReferenceTimeMax->Enable();
 }
 
 void MainFrame::DisableFileDependentControls()
@@ -1020,6 +1150,8 @@ void MainFrame::DisableFileDependentControls()
 	timeMaxText->Enable(false);
 	frequencyMinText->Enable(false);
 	frequencyMaxText->Enable(false);
+	normalizationReferenceTimeMin->Enable(false);
+	normalizationReferenceTimeMax->Enable(false);
 }
 
 void MainFrame::OnRenderThreadInfoEvent(wxCommandEvent& event)
@@ -1053,20 +1185,22 @@ void MainFrame::OnClose(wxCloseEvent& event)
 
 void MainFrame::UpdateAudioPosition(const float& position)
 {
-	const int minutes(static_cast<int>(position / 60.0));
-	currentTimeText->SetLabel(wxString::Format(_T("%02d:%04.1f"), minutes, position - minutes * 60.0));
-
 	double minTime, maxTime;
 	if (!GetTimeValues(minTime, maxTime))
 		return;
 
-	if (position < minTime || position > maxTime)
+	const double adjPosition(position + minTime);
+
+	const int minutes(static_cast<int>(adjPosition / 60.0));
+	currentTimeText->SetLabel(wxString::Format(_T("%02d:%04.1f"), minutes, adjPosition - minutes * 60.0));
+
+	if (adjPosition < minTime || adjPosition > maxTime)
 		sonogramImage->UpdateTimeCursor(0.0);
 	else
-		sonogramImage->UpdateTimeCursor((position - minTime) / (maxTime - minTime));
+		sonogramImage->UpdateTimeCursor(position / (maxTime - minTime));
 }
 
-void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent)
+void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent, const bool& hasFreqencyAxis)
 {
 	if (!audioFile || timePercent < 0.0 || frequencyPercent < 0.0)
 	{
@@ -1089,5 +1223,7 @@ void MainFrame::UpdateSonogramCursorInfo(const double& timePercent, const double
 	}
 
 	cursorTimeText->SetLabel(wxString::Format(_T("%f sec"), minTime + (maxTime - minTime) * timePercent));
-	cursorFrequencyText->SetLabel(wxString::Format(_T("%f Hz"), minFrequency + (maxFrequency - minFrequency) * frequencyPercent));
+
+	if (hasFreqencyAxis)
+		cursorFrequencyText->SetLabel(wxString::Format(_T("%f Hz"), minFrequency + (maxFrequency - minFrequency) * frequencyPercent));
 }

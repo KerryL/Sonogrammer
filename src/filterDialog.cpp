@@ -23,6 +23,7 @@
 
 // Standard C++ headers
 #include <sstream>
+#include <cinttypes>
 
 //=============================================================================
 // Class:			FilterDialog
@@ -867,15 +868,14 @@ wxString FilterDialog::GenerateExpressionFromComplexRoots(
 {
 	std::vector<std::complex<double>> terms(roots.size() + 1, std::complex<double>(0.0, 0.0));
 	terms[0].real(1.0);
-	unsigned int i, j;
-	for (i = 0; i < roots.size(); ++i)// from MATLAB's poly.m
+	for (unsigned int i = 0; i < roots.size(); ++i)// from MATLAB's poly.m
 	{
-		for (j = i + 1; j > 0; --j)
+		for (unsigned int j = i + 1; j > 0; --j)
 			terms[j] -= roots[i] * terms[j - 1];
 	}
 
 	wxString s, coefficient;
-	for (i = 0; i < terms.size(); ++i)
+	for (unsigned int i = 0; i < terms.size(); ++i)
 	{
 		// TODO:  Check to ensure imaginary part is zero?  I think this is guaranteed through the above math?
 		if (!IsZero(terms[i].real()))
@@ -894,7 +894,7 @@ wxString FilterDialog::GenerateExpressionFromComplexRoots(
 			else if (i == terms.size() - 2)
 				s.Append(coefficient + _T("s"));
 			else
-				s.Append(wxString::Format("%ss^%li", coefficient.mb_str(), terms.size() - i - 1));
+				s.Append(wxString::Format("%ss^%" PRId64, coefficient.mb_str(), terms.size() - i - 1));
 		}
 	}
 

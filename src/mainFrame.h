@@ -35,7 +35,7 @@ public:
 
 	void LoadFile(const wxString& fileName);
 
-	void UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent);
+	void UpdateSonogramCursorInfo(const double& timePercent, const double& frequencyPercent, const bool& hasFreqencyAxis);
 
 private:
 	void CreateControls();
@@ -54,6 +54,7 @@ private:
 
 	// Controls
 	StaticImage* sonogramImage;
+	StaticImage* waveFormImage;
 
 	wxTextCtrl* audioFileName;
 	wxButton* openAudioFileButton;
@@ -76,6 +77,10 @@ private:
 	wxButton* stopButton;
 	wxStaticText* currentTimeText;
 	wxCheckBox* includeFiltersInPlayback;
+
+	wxCheckBox* applyNormalization;
+	wxTextCtrl* normalizationReferenceTimeMin;
+	wxTextCtrl* normalizationReferenceTimeMax;
 
 	wxSlider* resolutionSlider;
 	wxStaticText* resolutionText;
@@ -117,6 +122,7 @@ private:
 		idStopButton,
 
 		idImageControl,
+		idNormalization,
 
 		idFFT,
 
@@ -133,6 +139,8 @@ private:
 	void AddFilterButtonClickedEvent(wxCommandEvent& event);
 	void RemoveFilterButtonClickedEvent(wxCommandEvent& event);
 	void FilterListDoubleClickEvent(wxCommandEvent& event);
+
+	void NormalizationSettingsChangedEvent(wxCommandEvent& event);
 
 	void ImageTextCtrlChangedEvent(wxCommandEvent& event);
 	void EditColorMapButtonClickedEvent(wxCommandEvent& event);
@@ -156,11 +164,15 @@ private:
 	void UpdateSonogramInformation();
 	void UpdateSonogram();
 	void ApplyFilters();
+	void ApplyNormalization();
 	void UpdateFFTResolutionLimits();
+	void UpdateWaveForm();
 
 	bool ImageInformationComplete() const;
-	bool GetTimeValues(double& minTime, double& maxTime) const;
-	bool GetFrequencyValues(double& minFrequency, double& maxFrequency) const;
+	bool GetTimeValues(double& minTime, double& maxTime);
+	bool GetFrequencyValues(double& minFrequency, double& maxFrequency);
+	bool GetNormalizationTimeValues(double& minTime, double& maxTime);
+	bool GetMinMaxValues(double& minValue, double& maxValue, wxTextCtrl* minTextCtrl, wxTextCtrl* maxTextCtrl);
 
 	std::unique_ptr<AudioFile> audioFile;
 	std::vector<Filter> filters;
@@ -172,7 +184,7 @@ private:
 
 	bool GetFFTParameters(SonogramGenerator::FFTParameters& parameters);
 
-	unsigned int GetNumberOfResolutions() const;
+	unsigned int GetNumberOfResolutions();
 	double GetResolution() const;
 	unsigned int GetWindowSize() const;
 	double GetTimeSlice() const;
@@ -193,8 +205,13 @@ private:
 
 	void UpdateAudioPosition(const float& position);
 
-	unsigned int videoWidth = 256;
-	unsigned int videoHeight = 256;
+	unsigned int videoWidth = 256;// [px]
+	unsigned int videoHeight = 256;// [px]
+	unsigned int audioBitRate = 64;// [kb/s]
+	unsigned int videoBitRate = 128;// [kb/s]
+
+	bool ValidateInputs();
+	void SetTextCtrlBackground(wxTextCtrl* textCtrl, const bool& highlight);
 
 	DECLARE_EVENT_TABLE();
 };

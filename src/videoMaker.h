@@ -34,7 +34,8 @@ struct AVPacket;
 class VideoMaker
 {
 public:
-	VideoMaker(const unsigned int& width, const unsigned int& height) : width(width), height(height) {}
+	VideoMaker(const unsigned int& width, const unsigned int& height, unsigned int audioBitRate, unsigned int videoBitRate)
+		: width(width), height(height), audioBitRate(audioBitRate), videoBitRate(videoBitRate) {}
 
 	bool MakeVideo(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
 		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, const std::string& fileName);
@@ -43,8 +44,10 @@ public:
 
 private:
 	// Dimensions apply to sonogram itself; axis and footer add to the total size
-	const unsigned int width;
-	const unsigned int height;
+	const unsigned int width;// [px]
+	const unsigned int height;// [px]
+	const unsigned int audioBitRate;// [b/s]
+	const unsigned int videoBitRate;// [b/s]
 	
 	static const double frameRate;// [Hz]
 	static const int footerHeight;

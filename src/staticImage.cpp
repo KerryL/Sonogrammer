@@ -8,8 +8,8 @@
 #include "mainFrame.h"
 
 StaticImage::StaticImage(wxWindow* parent, MainFrame& mainFrame, wxWindowID id, const unsigned int& width,
-	const unsigned int& height) : wxPanel(parent, id), mainFrame(mainFrame),
-	image(wxImage(width, height))
+	const unsigned int& height, const bool& hasFrequencyAxis) : wxPanel(parent, id), mainFrame(mainFrame),
+	image(wxImage(width, height)), hasFrequencyAxis(hasFrequencyAxis)
 {
 	image.Replace(0, 0, 0, 255, 255, 255);
 	SetMinSize(wxSize(width, height));
@@ -86,12 +86,12 @@ void StaticImage::ExportToFile(const wxString& fileName) const
 void StaticImage::OnMouseMove(wxMouseEvent& event)
 {
 	mainFrame.UpdateSonogramCursorInfo(static_cast<double>(event.GetX()) / GetSize().GetWidth(),
-		1.0 - static_cast<double>(event.GetY()) / GetSize().GetHeight());
+		1.0 - static_cast<double>(event.GetY()) / GetSize().GetHeight(), hasFrequencyAxis);
 }
 
 void StaticImage::OnMouseLeaveWindow(wxMouseEvent& WXUNUSED(event))
 {
-	mainFrame.UpdateSonogramCursorInfo(-1.0, -1.0);
+	mainFrame.UpdateSonogramCursorInfo(-1.0, -1.0, hasFrequencyAxis);
 }
 
 void StaticImage::ShowTimeCursor()
