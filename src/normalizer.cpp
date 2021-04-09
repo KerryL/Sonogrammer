@@ -8,6 +8,9 @@
 #include "soundData.h"
 #include "filter.h"
 
+// Standard C++ headers
+#include <cmath>
+
 void Normalizer::Normalize(SoundData& soundData, const float& gainFactor) const
 {
 	for (auto& v : soundData.GetData().GetY())
