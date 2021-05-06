@@ -84,6 +84,7 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_LISTBOX_DCLICK(wxID_ANY,					MainFrame::FilterListDoubleClickEvent)
 	EVT_CHECKBOX(idNormalization,					MainFrame::NormalizationSettingsChangedEvent)
 	EVT_TEXT(idNormalization,						MainFrame::NormalizationSettingsChangedEvent)
+	EVT_COMBOBOX(idPlaybackDevice,					MainFrame::PlaybackDeviceChangedEvent)
 	EVT_BUTTON(idPlayButton,						MainFrame::PlayButtonClickedEvent)
 	EVT_BUTTON(idPauseButton,						MainFrame::PauseButtonClickedEvent)
 	EVT_BUTTON(idStopButton,						MainFrame::StopButtonClickedEvent)
@@ -216,6 +217,14 @@ wxSizer* MainFrame::CreateVersionText(wxWindow* parent)
 wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 {
 	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Audio")));
+
+	auto playbackSizer(new wxBoxSizer(wxHORIZONTAL));
+	sizer->Add(playbackSizer);
+	playbackDeviceComboBox = new wxComboBox(sizer->GetStaticBox(), idPlaybackDevice);
+	playbackSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Playback Device")), wxSizerFlags().Border(wxALL, 5));
+	playbackSizer->Add(playbackDeviceComboBox, wxSizerFlags().Border(wxALL, 5));
+	PopulatePlaybackDeviceList();
+
 	wxBoxSizer* buttonSizer(new wxBoxSizer(wxHORIZONTAL));
 	sizer->Add(buttonSizer);
 
@@ -782,6 +791,29 @@ void MainFrame::PauseButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 void MainFrame::StopButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	StopPlayingAudio();
+}
+
+void MainFrame::PlaybackDeviceChangedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	// TODO:  This is kind of a work-around to not having an implementation to detect device changes.
+	// We check the list of devices every time the list changes, so if the selected device is no
+	// longer available, we re-build the list in the control.
+	const auto deviceList(AudioRenderer::GetPlaybackDevices());
+	const auto selectedDevice(playbackDeviceComboBox->GetString(playbackDeviceComboBox->GetSelection()));
+	const auto matchingItem(deviceList.find(selectedDevice.ToStdString()));
+	if (matchingItem == deviceList.end())
+		PopulatePlaybackDeviceList();
+	else
+		audioRenderer.SetPlaybackDevice(matchingItem->second);
+}
+
+void MainFrame::PopulatePlaybackDeviceList()
+{
+	playbackDeviceComboBox->Clear();
+	const auto deviceList(AudioRenderer::GetPlaybackDevices());
+	for (auto it = deviceList.begin(); it != deviceList.end(); ++it)
+		playbackDeviceComboBox->Append(it->first);
+	playbackDeviceComboBox->SetSelection(deviceList.begin()->second);
 }
 
 void MainFrame::StopPlayingAudio()

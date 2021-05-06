@@ -13,6 +13,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <map>
 
 // wxWidgets headers
 #include <wx/event.h>
@@ -31,6 +32,11 @@ public:
 	void Pause();
 	void Stop();
 
+	typedef std::map<std::string, unsigned int> AudioDeviceList;
+	static AudioDeviceList GetPlaybackDevices();
+
+	inline void SetPlaybackDevice(const unsigned int& id) { playbackDeviceId = id; }
+
 	bool IsPaused() const { return state == State::Paused; }
 
 	enum class InfoType
@@ -47,6 +53,8 @@ private:
 	std::mutex mutex;
 	std::condition_variable stateChangeCondition;
 	std::unique_ptr<SoundData> data;
+
+	unsigned int playbackDeviceId = 0;
 
 	enum class State
 	{

@@ -72,6 +72,7 @@ private:
 	wxStaticText* audioBitRateText;
 	wxStaticText* audioSampleFormatText;
 
+	wxComboBox* playbackDeviceComboBox;
 	wxButton* pauseButton;
 	wxButton* playButton;
 	wxButton* stopButton;
@@ -117,6 +118,7 @@ private:
 
 		idEditColorMap,
 
+		idPlaybackDevice,
 		idPauseButton,
 		idPlayButton,
 		idStopButton,
@@ -147,6 +149,7 @@ private:
 
 	void FFTSettingsChangedEvent(wxCommandEvent& event);
 
+	void PlaybackDeviceChangedEvent(wxCommandEvent& event);
 	void PlayButtonClickedEvent(wxCommandEvent& event);
 	void PauseButtonClickedEvent(wxCommandEvent& event);
 	void StopButtonClickedEvent(wxCommandEvent& event);
@@ -167,6 +170,8 @@ private:
 	void ApplyNormalization();
 	void UpdateFFTResolutionLimits();
 	void UpdateWaveForm();
+
+	void PopulatePlaybackDeviceList();
 
 	bool ImageInformationComplete() const;
 	bool GetTimeValues(double& minTime, double& maxTime);

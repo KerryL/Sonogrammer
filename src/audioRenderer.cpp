@@ -33,6 +33,16 @@ AudioRenderer::~AudioRenderer()
 	SDL_Quit();
 }
 
+AudioRenderer::AudioDeviceList AudioRenderer::GetPlaybackDevices()
+{
+	AudioDeviceList deviceList;
+	const unsigned int count(SDL_GetNumAudioDevices(0));
+	for (unsigned int i = 0; i < count; ++i)
+		deviceList[SDL_GetAudioDeviceName(i, 0)] = i;
+
+	return deviceList;
+}
+
 void AudioRenderer::Play(const SoundData& soundData)
 {
 	std::lock_guard<std::mutex> lock(mutex);
@@ -73,7 +83,7 @@ void AudioRenderer::Stop()
 
 void AudioRenderer::RenderLoop()
 {
-	const int outputDeviceId(0);// TODO:  Allow user to select different device?
+	const int outputDeviceId(playbackDeviceId);
 	
 	SDL_AudioSpec desiredSpec;
 	desiredSpec.callback = nullptr;
