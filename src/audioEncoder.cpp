@@ -61,7 +61,10 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 	inputFrame->channels = 1;
 	inputFrame->channel_layout = AV_CH_LAYOUT_MONO;
 	inputFrame->sample_rate = sampleRate;
-	inputFrame->nb_samples = encoderContext->frame_size;
+	if (encoderContext->frame_size > 0)
+		inputFrame->nb_samples = encoderContext->frame_size;
+	else
+		inputFrame->nb_samples = 1024;
 	inputFrame->format = AV_SAMPLE_FMT_FLT;
 	const int align(32);
 	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(inputFrame, align), "Failed to allocate audio buffer"))
@@ -75,5 +78,7 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 
 unsigned int AudioEncoder::GetFrameSize() const
 {
-	return encoderContext->frame_size;
+	if (encoderContext->frame_size > 0)
+		return encoderContext->frame_size;
+	return inputFrame->nb_samples;
 }

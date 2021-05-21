@@ -50,7 +50,7 @@ private:
 	wxSizer* CreateAudioControls(wxWindow* parent);
 	wxSizer* CreateFFTControls(wxWindow* parent);
 	wxSizer* CreateImageControls(wxWindow* parent);
-	wxSizer* CreateVideoControls(wxWindow* parent);
+	wxSizer* CreateExportControls(wxWindow* parent);
 
 	// Controls
 	StaticImage* sonogramImage;
@@ -101,7 +101,8 @@ private:
 	wxStaticText* cursorTimeText;
 	wxStaticText* cursorFrequencyText;
 
-	wxButton* makeVideoButton;
+	wxButton* exportVideoButton;
+	wxButton* exportAudioButton;
 	wxStaticText* pixelsPerSecond;
 
 	// The event IDs
@@ -128,7 +129,8 @@ private:
 
 		idFFT,
 
-		idMakeVideo
+		idExportVideo,
+		idExportAudio
 	};
 
 	// Events
@@ -158,7 +160,8 @@ private:
 
 	void OnClose(wxCloseEvent& event);
 
-	void MakeVideoButtonClickedEvent(wxCommandEvent& event);
+	void ExportVideoButtonClickedEvent(wxCommandEvent& event);
+	void ExportAudioButtonClickedEvent(wxCommandEvent& event);
 
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();

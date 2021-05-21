@@ -16,6 +16,7 @@
 #include "videoMaker.h"
 #include "waveFormGenerator.h"
 #include "normalizer.h"
+#include "audioEncoderInterface.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
@@ -89,7 +90,8 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_BUTTON(idPauseButton,						MainFrame::PauseButtonClickedEvent)
 	EVT_BUTTON(idStopButton,						MainFrame::StopButtonClickedEvent)
 	EVT_BUTTON(idEditColorMap,						MainFrame::EditColorMapButtonClickedEvent)
-	EVT_BUTTON(idMakeVideo,							MainFrame::MakeVideoButtonClickedEvent)
+	EVT_BUTTON(idExportVideo,						MainFrame::ExportVideoButtonClickedEvent)
+	EVT_BUTTON(idExportAudio,						MainFrame::ExportAudioButtonClickedEvent)
 	EVT_TEXT(idImageControl,						MainFrame::ImageTextCtrlChangedEvent)
 	EVT_SLIDER(idFFT,								MainFrame::FFTSettingsChangedEvent)
 	EVT_TEXT(idFFT,									MainFrame::FFTSettingsChangedEvent)
@@ -135,7 +137,7 @@ void MainFrame::CreateControls()
 	rightBottomSizer->Add(CreateAudioControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 	rightBottomSizer->Add(CreateFFTControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 	rightBottomSizer->Add(CreateImageControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
-	rightBottomSizer->Add(CreateVideoControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
+	rightBottomSizer->Add(CreateExportControls(panel), wxSizerFlags().Border(wxALL, 5).Expand());
 
 	TransferDataToWindow();
 	DisableFileDependentControls();
@@ -284,19 +286,19 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	return sizer;
 }
 
-wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
+wxSizer* MainFrame::CreateExportControls(wxWindow* parent)
 {
-	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Video")));
+	wxStaticBoxSizer* sizer(new wxStaticBoxSizer(wxVERTICAL, parent, _T("Export")));
 	wxFlexGridSizer* innerSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
 	sizer->Add(innerSizer, wxSizerFlags().Border(wxALL, 5));
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Width (px)")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Video Width (px)")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoWidth)));
 
-	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Height (px)")));
+	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Video Height (px)")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoHeight)));
 	
-	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("X Scale")));
+	auto pixPerSecLabel(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Video X Scale")));
 	pixPerSecLabel->SetToolTip(_T("Based on FFT window size"));
 	innerSizer->Add(pixPerSecLabel);
 	pixelsPerSecond = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxEmptyString);
@@ -308,9 +310,14 @@ wxSizer* MainFrame::CreateVideoControls(wxWindow* parent)
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Video Bit Rate (kb/s)")));
 	innerSizer->Add(new wxTextCtrl(sizer->GetStaticBox(), wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, 0L, wxMakeIntegerValidator(&videoBitRate)));
 	
-	makeVideoButton = new wxButton(sizer->GetStaticBox(), idMakeVideo, _T("Make Video"));
-	makeVideoButton->Enable(false);
-	innerSizer->Add(makeVideoButton);
+	exportVideoButton = new wxButton(sizer->GetStaticBox(), idExportVideo, _T("Export Video"));
+	exportVideoButton->Enable(false);
+	innerSizer->Add(exportVideoButton, wxSizerFlags().Expand());
+	innerSizer->AddStretchSpacer();
+
+	exportAudioButton = new wxButton(sizer->GetStaticBox(), idExportAudio, _T("Export Audio"));
+	exportAudioButton->Enable(false);
+	innerSizer->Add(exportAudioButton, wxSizerFlags().Expand());
 
 	return sizer;
 }
@@ -347,7 +354,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	innerSizer->Add(resolutionText);
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Window Function")));
-	innerSizer->Add(windowComboBox);
+	innerSizer->Add(windowComboBox, wxSizerFlags().Expand());
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Overlap Factor")));
 	innerSizer->Add(overlapTextBox);
@@ -843,7 +850,7 @@ void MainFrame::SetControlEnablesOnStop()
 	sonogramImage->HideTimeCursor();
 }
 
-void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+void MainFrame::ExportVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 {
 	if (!filteredSoundData || !ImageInformationComplete())
 		return;
@@ -866,6 +873,31 @@ void MainFrame::MakeVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
 	VideoMaker videoMaker(videoWidth, videoHeight, audioBitRate * 1000, videoBitRate * 1000);
 	videoMaker.MakeVideo(segmentData, parameters, colorMap, dialog.GetPath().ToStdString());
+}
+
+void MainFrame::ExportAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	if (!filteredSoundData || !ImageInformationComplete())
+		return;
+
+	SonogramGenerator::FFTParameters parameters;
+	if (!GetFFTParameters(parameters))
+		return;
+
+	wxFileDialog dialog(this, _T("Export Filtered Audio"), wxString(), wxFileName::StripExtension(wxFileName::FileName(audioFileName->GetValue()).GetFullName()) + _T(".wav"),
+		_T("WAV files (*.wav)|*.wav|MP3 Files (*.mp3)|*.mp3"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() == wxID_CANCEL)
+		return;
+
+	TransferDataFromWindow();
+
+	double startTime, endTime;
+	if (!GetTimeValues(startTime, endTime))
+		return;
+
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
+	AudioEncoderInterface encoderInterface;
+	encoderInterface.Encode(dialog.GetPath().ToStdString(), segmentData, audioBitRate * 1000);
 }
 
 void MainFrame::HandleNewAudioFile()
@@ -1159,7 +1191,8 @@ unsigned int MainFrame::GetWindowSize() const
 void MainFrame::EnableFileDependentControls()
 {
 	exportSonogramImageButton->Enable();
-	makeVideoButton->Enable();
+	exportVideoButton->Enable();
+	exportAudioButton->Enable();
 
 	playButton->Enable();
 	//pauseButton->Enable();// Gets enabled after we begin playing
@@ -1176,7 +1209,8 @@ void MainFrame::EnableFileDependentControls()
 void MainFrame::DisableFileDependentControls()
 {
 	exportSonogramImageButton->Enable(false);
-	makeVideoButton->Enable(false);
+	exportVideoButton->Enable(false);
+	exportAudioButton->Enable(false);
 
 	playButton->Enable(false);
 	pauseButton->Enable(false);

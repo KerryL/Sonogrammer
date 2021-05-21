@@ -71,14 +71,34 @@ bool Muxer::AddStream(Encoder& encoder, std::queue<AVPacket>& packetQueue)
 	return true;
 }
 
-AVCodecID Muxer::GetAudioCodec() const
+std::vector<AVCodecID> Muxer::GetCodecList(const AVMediaType& type) const
 {
-	return outputFormatContext->oformat->audio_codec;
+	std::vector<AVCodecID> encoderList;
+	AVCodec* c(nullptr);
+	while (c = av_codec_next(c))
+	{
+		auto e(avcodec_find_encoder(c->id));
+		if (e && e->type == type && avformat_query_codec(outputFormatContext->oformat, c->id, FF_COMPLIANCE_STRICT) == 1)
+			encoderList.push_back(c->id);
+	}
+
+	return encoderList;
 }
 
-AVCodecID Muxer::GetVideoCodec() const
+// I don't completely understand why sometimes we get a specific codec ID and sometimes we don't, even when a container supports multiple codecs
+// This seems to work but can probably be improved
+std::vector<AVCodecID> Muxer::GetAudioCodecs() const
 {
-	return outputFormatContext->oformat->video_codec;
+	if (outputFormatContext->oformat->audio_codec == AV_CODEC_ID_FIRST_AUDIO)
+		return GetCodecList(AVMEDIA_TYPE_AUDIO);
+	return std::vector<AVCodecID>(1, outputFormatContext->oformat->audio_codec);
+}
+
+std::vector <AVCodecID> Muxer::GetVideoCodecs() const
+{
+	/*if (outputFormatContext->oformat->audio_codec == ????)// when?
+		return GetCodecList(AVMEDIA_TYPE_VIDEO);*/
+	return std::vector<AVCodecID>(1, outputFormatContext->oformat->video_codec);
 }
 
 bool Muxer::WriteHeader()
@@ -94,6 +114,9 @@ bool Muxer::WriteHeader()
 
 bool Muxer::WriteTrailer()
 {
+	if (LibCallWrapper::FFmpegErrorCheck(av_interleaved_write_frame(outputFormatContext, nullptr), "Failed to flush buffer"))
+		return false;
+
 	if (LibCallWrapper::FFmpegErrorCheck(av_write_trailer(outputFormatContext), "Failed to write trailer"))
 		return false;
 

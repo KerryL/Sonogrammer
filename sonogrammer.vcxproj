@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\audioEncoder.cpp" />
+    <ClCompile Include="src\audioEncoderInterface.cpp" />
     <ClCompile Include="src\audioFile.cpp" />
     <ClCompile Include="src\audioRenderer.cpp" />
     <ClCompile Include="src\audioUtilities.cpp" />
@@ -175,6 +176,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\audioEncoder.h" />
+    <ClInclude Include="src\audioEncoderInterface.h" />
     <ClInclude Include="src\audioFile.h" />
     <ClInclude Include="src\audioRenderer.h" />
     <ClInclude Include="src\audioUtilities.h" />

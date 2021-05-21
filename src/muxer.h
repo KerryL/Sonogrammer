@@ -45,8 +45,8 @@ public:
 
 	AVFormatContext* GetOutputFormatContext() const { return outputFormatContext; }
 
-	AVCodecID GetAudioCodec() const;
-	AVCodecID GetVideoCodec() const;
+	std::vector<AVCodecID> GetAudioCodecs() const;
+	std::vector<AVCodecID> GetVideoCodecs() const;
 
 	bool WriteHeader();
 	bool WriteTrailer();
@@ -66,6 +66,8 @@ private:
 	};
 	
 	std::vector<Stream> streams;
+
+	std::vector<AVCodecID> GetCodecList(const AVMediaType& type) const;
 };
 
 #endif// MUXER_H_
