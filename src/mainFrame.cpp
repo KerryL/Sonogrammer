@@ -357,7 +357,7 @@ wxSizer* MainFrame::CreateFFTControls(wxWindow* parent)
 	innerSizer->Add(windowComboBox, wxSizerFlags().Expand());
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Overlap Factor")));
-	innerSizer->Add(overlapTextBox);
+	innerSizer->Add(overlapTextBox, wxSizerFlags().Expand());
 
 	innerSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Range")));
 	innerSizer->Add(rangeText);
