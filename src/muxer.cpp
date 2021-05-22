@@ -74,8 +74,9 @@ bool Muxer::AddStream(Encoder& encoder, std::queue<AVPacket>& packetQueue)
 std::vector<AVCodecID> Muxer::GetCodecList(const AVMediaType& type) const
 {
 	std::vector<AVCodecID> encoderList;
-	AVCodec* c(nullptr);
-	while (c = av_codec_next(c))
+	const AVCodec* c(nullptr);
+	void* opaque(nullptr);
+	while ((c = av_codec_iterate(&opaque)))
 	{
 		auto e(avcodec_find_encoder(c->id));
 		if (e && e->type == type && avformat_query_codec(outputFormatContext->oformat, c->id, FF_COMPLIANCE_STRICT) == 1)

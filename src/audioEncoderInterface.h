@@ -11,6 +11,7 @@
 
 // Standard C++ headers
 #include <queue>
+#include <memory>
 
 // Local forward declarations
 class SoundData;
