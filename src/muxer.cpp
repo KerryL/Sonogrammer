@@ -62,7 +62,7 @@ bool Muxer::Initialize(const std::string& format, const std::string& outputFileN
 	return true;
 }
 
-bool Muxer::AddStream(Encoder& encoder, std::queue<AVPacket>& packetQueue)
+bool Muxer::AddStream(Encoder& encoder, std::queue<AVPacket*>& packetQueue)
 {
 	Stream stream;
 	stream.e = &encoder;
@@ -134,7 +134,7 @@ bool Muxer::WriteNextFrame()
 	{
 		if (streams[i].q->empty())
 			continue;
-		if (streams[i].q->front().pts < streams[minPTSi].q->front().pts)
+		if (streams[i].q->front()->pts < streams[minPTSi].q->front()->pts)
 			minPTSi = i;
 	}
 	
@@ -144,12 +144,17 @@ bool Muxer::WriteNextFrame()
 	auto packet(streams[minPTSi].q->front());
 	streams[minPTSi].q->pop();
 
-	packet.stream_index = streams[minPTSi].e->stream->index;
+	packet->stream_index = streams[minPTSi].e->stream->index;
 
-	if (LibCallWrapper::FFmpegErrorCheck(av_interleaved_write_frame(outputFormatContext, &packet), "Failed to write frame"))
+	if (LibCallWrapper::FFmpegErrorCheck(av_interleaved_write_frame(outputFormatContext, packet), "Failed to write frame"))
+	{
+		av_packet_unref(packet);
+		av_packet_free(&packet);
 		return false;
+	}
 		
-	av_packet_unref(&packet);
+	av_packet_unref(packet);
+	av_packet_free(&packet);
 
 	return true;
 }

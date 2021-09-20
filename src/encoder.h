@@ -37,7 +37,7 @@ public:
 	// Derived classes are responsible for allocating the encoders and contexts
 	
 	AVStream* stream = nullptr;
-	AVCodec* encoder = nullptr;
+	const AVCodec* encoder = nullptr;
 	AVCodecContext* encoderContext = nullptr;
 	
 	AVFrame* inputFrame = nullptr;
@@ -56,7 +56,7 @@ protected:
 	std::ostream& outStream;
 	bool flushing = false;
 
-	AVPacket outputPacket;
+	AVPacket* outputPacket;
 	int64_t ptsCounter;
 	
 	bool DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId);// Must be called by derived class initialization methods

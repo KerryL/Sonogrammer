@@ -67,7 +67,7 @@ private:
 	void ImageToAVFrame(const wxImage& image, AVFrame*& frame) const;
 	void SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const;
 	
-	static void FreeQueuedPackets(std::queue<AVPacket>& q);
+	static void FreeQueuedPackets(std::queue<AVPacket*>& q);
 };
 
 #endif// VIDEO_MAKER_H_

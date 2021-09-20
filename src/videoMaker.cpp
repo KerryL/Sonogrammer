@@ -177,8 +177,8 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	if (!audioEncoder.Initialize(muxer.GetOutputFormatContext(), 1, soundData->GetSampleRate(), audioBitRate, AV_SAMPLE_FMT_FLTP, muxer.GetAudioCodecs().front()))
 		return false;
 
-	std::queue<AVPacket> encodedVideo;
-	std::queue<AVPacket> encodedAudio;
+	std::queue<AVPacket*> encodedVideo;
+	std::queue<AVPacket*> encodedAudio;
 	if (!muxer.AddStream(videoEncoder, encodedVideo) || !muxer.AddStream(audioEncoder, encodedAudio))
 		return false;
 
@@ -206,12 +206,12 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		else
 			videoEncoder.inputFrame = nullptr;// Begin flushing
 			
-		AVPacket packet;
-		av_init_packet(&packet);
-		const auto status(videoEncoder.Encode(packet));
+		AVPacket* packet(av_packet_alloc());
+		const auto status(videoEncoder.Encode(*packet));
 		if (status == Encoder::Status::Error)
 		{
-			av_packet_unref(&packet);
+			av_packet_unref(packet);
+			av_packet_free(&packet);
 			FreeQueuedPackets(encodedVideo);
 			return false;
 		}
@@ -219,7 +219,10 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		if (status == Encoder::Status::HavePacket)
 			encodedVideo.push(packet);
 		else
-			av_packet_unref(&packet);
+		{
+			av_packet_unref(packet);
+			av_packet_free(&packet);
+		}
 		
 		if (status == Encoder::Status::Done)
 			break;
@@ -237,12 +240,12 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		else
 			audioEncoder.inputFrame = nullptr;// Begin flushing
 
-		AVPacket packet;
-		av_init_packet(&packet);
-		const auto status(audioEncoder.Encode(packet));
+		AVPacket* packet(av_packet_alloc());
+		const auto status(audioEncoder.Encode(*packet));
 		if (status == Encoder::Status::Error)
 		{
-			av_packet_unref(&packet);
+			av_packet_unref(packet);
+			av_packet_free(&packet);
 			FreeQueuedPackets(encodedAudio);
 			FreeQueuedPackets(encodedVideo);
 			return false;
@@ -250,7 +253,10 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 		if (status == Encoder::Status::HavePacket)
 			encodedAudio.push(packet);
 		else
-			av_packet_unref(&packet);
+		{
+			av_packet_unref(packet);
+			av_packet_free(&packet);
+		}
 			
 		if (status == Encoder::Status::Done)
 			break;
@@ -272,11 +278,12 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 	return true;
 }
 
-void VideoMaker::FreeQueuedPackets(std::queue<AVPacket>& q)
+void VideoMaker::FreeQueuedPackets(std::queue<AVPacket*>& q)
 {
 	while (!q.empty())
 	{
-		av_packet_unref(&q.front());
+		av_packet_unref(q.front());
+		av_packet_free(&q.front());
 		q.pop();
 	}
 }

@@ -25,7 +25,7 @@ public:
 	bool Encode(const std::string& outputFileName, const std::unique_ptr<SoundData>& soundData, const int& bitRate);
 
 private:
-	void FreeQueuedPackets(std::queue<AVPacket>& q);
+	void FreeQueuedPackets(std::queue<AVPacket*>& q);
 	void SoundToAVFrame(const unsigned int& startSample, const SoundData& soundData, const unsigned int& frameSize, AVFrame*& frame) const;
 };
 

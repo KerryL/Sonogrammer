@@ -53,7 +53,7 @@ bool FFmpegErrorCheck(int result, const std::string& message)
 	return false;
 }
 
-bool AllocationFailed(void* ptr, const std::string& message)
+bool AllocationFailed(const void* const ptr, const std::string& message)
 {
 	if (ptr)
 		return false;

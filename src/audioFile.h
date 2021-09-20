@@ -77,7 +77,7 @@ private:
 	static AVDictionary** FindStreamInfoOptions(AVFormatContext* s, AVDictionary* codecOptions);
 	static int CheckStreamSpecifier(AVFormatContext* s, AVStream* st, const char* spec);
 	static AVDictionary *FilterCodecOptions(AVDictionary* opts, AVCodecID codec_id,
-		AVFormatContext* s, AVStream* st, AVCodec* codec);
+		AVFormatContext* s, AVStream* st, const AVCodec* codec);
 
 	bool OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& codecContext);
 	bool CreateCodecContext(AVFormatContext& formatContext, AVCodecContext*& codecContext);
@@ -86,7 +86,7 @@ private:
 
 	void AppendFrame(const AVFrame& frame);
 	void ZeroFillUnusedData();
-	bool ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& packet) const;
+	bool ReadPacketFromFile(AVFormatContext& formatContext, AVPacket* packet) const;
 };
 
 #endif// AUDIO_FILE_H_

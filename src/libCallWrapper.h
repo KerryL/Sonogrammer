@@ -14,7 +14,7 @@ namespace LibCallWrapper
 {
 
 bool FFmpegErrorCheck(int result, const std::string& message);
-bool AllocationFailed(void* ptr, const std::string& message);
+bool AllocationFailed(const void* const ptr, const std::string& message);
 
 }
 

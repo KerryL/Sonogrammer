@@ -24,7 +24,7 @@ extern "C"
 
 Encoder::Encoder(std::ostream& outStream) : outStream(outStream)
 {
-	av_init_packet(&outputPacket);
+	outputPacket = av_packet_alloc();
 }
 
 Encoder::~Encoder()
@@ -32,7 +32,8 @@ Encoder::~Encoder()
 	if (encoderContext)
 		avcodec_free_context(&encoderContext);
 
-	av_packet_unref(&outputPacket);
+	av_packet_unref(outputPacket);
+	av_packet_free(&outputPacket);
 	
 	if (inputFrame)
 		av_frame_free(&inputFrame);
@@ -90,15 +91,15 @@ Encoder::Status Encoder::Encode(AVPacket& encodedPacket)
 	if (!inputFrame)
 		flushing = true;
 
-	int returnCode(avcodec_receive_packet(encoderContext, &outputPacket));
+	int returnCode(avcodec_receive_packet(encoderContext, outputPacket));
 	if (returnCode == AVERROR(EAGAIN))
 		return Status::NeedMoreInput;
 	else if (returnCode == AVERROR_EOF)
 		return Status::Done;
 	else if (returnCode == 0)
 	{
-		av_packet_rescale_ts(&outputPacket, encoderContext->time_base, stream->time_base);
-		av_packet_ref(&encodedPacket, &outputPacket);
+		av_packet_rescale_ts(outputPacket, encoderContext->time_base, stream->time_base);
+		av_packet_ref(&encodedPacket, outputPacket);
 		return Status::HavePacket;
 	}
 	

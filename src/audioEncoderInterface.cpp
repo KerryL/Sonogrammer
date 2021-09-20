@@ -37,7 +37,7 @@ bool AudioEncoderInterface::Encode(const std::string& outputFileName, const std:
 	if (!encoder.Initialize(muxer.GetOutputFormatContext(), 1, static_cast<int>(soundData->GetSampleRate()), bitRate, AV_SAMPLE_FMT_FLTP, codecID))
 		return false;
 
-	std::queue<AVPacket> encodedAudio;
+	std::queue<AVPacket*> encodedAudio;
 	if (!muxer.AddStream(encoder, encodedAudio))
 		return false;
 
@@ -56,19 +56,22 @@ bool AudioEncoderInterface::Encode(const std::string& outputFileName, const std:
 		else
 			encoder.inputFrame = nullptr;// Begin flushing
 
-		AVPacket packet;
-		av_init_packet(&packet);
-		const auto status(encoder.Encode(packet));
+		AVPacket* packet(av_packet_alloc());
+		const auto status(encoder.Encode(*packet));
 		if (status == Encoder::Status::Error)
 		{
-			av_packet_unref(&packet);
+			av_packet_unref(packet);
+			av_packet_free(&packet);
 			FreeQueuedPackets(encodedAudio);
 			return false;
 		}
 		if (status == Encoder::Status::HavePacket)
 			encodedAudio.push(packet);
 		else
-			av_packet_unref(&packet);
+		{
+			av_packet_unref(packet);
+			av_packet_free(&packet);
+		}
 
 		if (status == Encoder::Status::Done)
 			break;
@@ -90,11 +93,12 @@ bool AudioEncoderInterface::Encode(const std::string& outputFileName, const std:
 }
 
 // TODO:  Clean up this (and VideoMaker) to have less repeated code
-void AudioEncoderInterface::FreeQueuedPackets(std::queue<AVPacket>& q)
+void AudioEncoderInterface::FreeQueuedPackets(std::queue<AVPacket*>& q)
 {
 	while (!q.empty())
 	{
-		av_packet_unref(&q.front());
+		av_packet_unref(q.front());
+		av_packet_free(&q.front());
 		q.pop();
 	}
 }

@@ -1,0 +1,49 @@
+This software relies on FFmpeg (www.ffmpeg.org) and libx264(https://www.videolan.org/developers/x264.html).
+
+The distributed windows binaries are built with git snapshots:
+x264 (available from https://code.videolan.org/videolan/x264.git):  ae03d92b52bb7581df2e75d571989cb1ecd19cbd
+FFmpeg (available from git://source.ffmpeg.org/ffmpeg.git):  5e7e2e5031cd032bfddcdddd0fe2cf0587e4175d
+
+Building these binaries on Windows is a little less than straightforward. The following process was used (this is based on the process found at https://www.roxlu.com/2019/062/compiling-ffmpeg-with-x264-on-windows-10-using-msvc with some modifications).
+1.  Download MSYS2 from www.msys2.org/.
+2.  Open a x64 Developer Command Prompt for VS2017 (press start button and start typing "developer command prompt" to find it).
+3.  cd to the MS Visual Studio installation directory (i.e. C:\Program Files (x86)\Microsoft Visual Studio\2017\Professional\).
+4.  cd to VC\Auxiliary\Build\.
+5.  Run vcvarsall.bat x64.
+6.  Install MSYS2 into C:\msys64.
+7.  Edit c:\msys64\msys2_shell.cmd to remove the line MSYS2_PATH_TYPE=inherit (comment line out by prefixing the line with "REM ").
+8.  Run C:\msys64\msys2_shell.cmd.
+9.  Use the MSYS2 shell to run the following commands:
+	a.  pacman -S yu
+	b.  pacman -S make
+	c.  pacman -S diffutils
+	d.  pacman -S yasm
+	e.  pacman -S nasm
+	f.  mv /usr/bin/link.exe /usr/bin/link.exe.bak
+	g.  cd <to desired root location>
+	h.  mkdir ffmpeg
+	i.  cd ffmpeg
+	j.  mkdir sources build
+	k.  cd sources
+	l.  git clone --depth 1 https://code.videolan.org/videolan/x264.git
+	m.  git clone --depth 1 git://source.ffmpeg.org/ffmpeg.git
+	n.  cd x264
+	o.  curl "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD" > config.guess
+	p.  sed -i 's/host_os = mingw/host_os = msys/' configure
+	q.  cd ../../build
+	r.  mkdir x264 ffmpeg
+	s.  cd x264
+	t.  CC=cl ./../../sources/x264/configure --prefix=./../../installed --enable-shared
+	u.  make -j 8
+	v.  make install
+	w.  mv ./../../installed/lib/libx264.dll.lib ./../../installed/lib/libx264.lib
+	x.  cd ../ffmpeg
+	z.  CC=cl ./../../sources/ffmpeg/configure --prefix=./../../installed --toolchain=msvc --arch=x86_64 --enable-yasm --enable-asm --enable-shared --disable-static --disable-programs --enable-libx264  --enable-gpl  --extra-ldflags="-LIBPATH:./../../installed/lib" --extra-cflags="-I./../../installed/include/"
+	aa. make V=1 -j 8
+	ab. make install
+10. In the MSVC IDE, go to the Property Manager, expand "sonogrammer," then "Release | x64" and double-click on Microsoft.Cpp.x64.user.
+11. Click on "User Macros" and create a new macro called "FFMPEG" that points to <root locaiton specified in step 9.g. above>\installed\.
+
+NOTE:  To exactly reproduce the FFmpeg binaries as redistributed with this project, two additional steps must be inserted into the above process:
+	- After step l (cloning x264): $ git checkout ae03d92b52bb7581df2e75d571989cb1ecd19cbd
+	- After step m. (cloning FFmpeg): $ git checkout 5e7e2e5031cd032bfddcdddd0fe2cf0587e4175d

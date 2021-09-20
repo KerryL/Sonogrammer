@@ -44,7 +44,7 @@ int AudioFile::CheckStreamSpecifier(AVFormatContext* s, AVStream* st, const char
 }
 
 AVDictionary* AudioFile::FilterCodecOptions(AVDictionary* opts, AVCodecID codec_id,
-	AVFormatContext* s, AVStream* st, AVCodec *codec)
+	AVFormatContext* s, AVStream* st, const AVCodec *codec)
 {
 	AVDictionary* ret(nullptr);
 	AVDictionaryEntry* t(nullptr);
@@ -92,10 +92,10 @@ AVDictionary* AudioFile::FilterCodecOptions(AVDictionary* opts, AVCodecID codec_
 				return nullptr;
 			}
 
-		if (av_opt_find(&cc, t->key, NULL, flags, AV_OPT_SEARCH_FAKE_OBJ) || !codec ||
-			(codec->priv_class && av_opt_find(&codec->priv_class, t->key, NULL, flags, AV_OPT_SEARCH_FAKE_OBJ)))
+		if (av_opt_find(&cc, t->key, nullptr, flags, AV_OPT_SEARCH_FAKE_OBJ) || !codec ||
+			(codec->priv_class && av_opt_find(const_cast<AVClass*>(codec->priv_class), t->key, nullptr, flags, AV_OPT_SEARCH_FAKE_OBJ)))
 			av_dict_set(&ret, t->key, t->value, 0);
-		else if (t->key[0] == prefix && av_opt_find(&cc, t->key + 1, NULL, flags, AV_OPT_SEARCH_FAKE_OBJ))
+		else if (t->key[0] == prefix && av_opt_find(&cc, t->key + 1, nullptr, flags, AV_OPT_SEARCH_FAKE_OBJ))
 			av_dict_set(&ret, t->key + 1, t->value, 0);
 
 		if (p)
@@ -274,7 +274,7 @@ bool AudioFile::OpenAudioFile(AVFormatContext*& formatContext, AVCodecContext*& 
 
 bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContext*& codecContext)
 {
-	AVCodec* codec;
+	const AVCodec* codec;
 	codec = avcodec_find_decoder(formatContext.streams[streamIndex]->codecpar->codec_id);
 	if (LibCallWrapper::AllocationFailed(codec, "Failed to find decoder"))
 		return false;
@@ -310,11 +310,11 @@ bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& r
 	return true;
 }
 
-bool AudioFile::ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& packet) const
+bool AudioFile::ReadPacketFromFile(AVFormatContext& formatContext, AVPacket* packet) const
 {
 	do
 	{
-		const int returnCode(av_read_frame(&formatContext, &packet));
+		const int returnCode(av_read_frame(&formatContext, packet));
 		if (returnCode != AVERROR_EOF)
 		{
 			if (LibCallWrapper::FFmpegErrorCheck(returnCode,
@@ -323,11 +323,11 @@ bool AudioFile::ReadPacketFromFile(AVFormatContext& formatContext, AVPacket& pac
 		}
 		else
 		{
-			packet.size = 0;
-			packet.data = nullptr;
+			packet->size = 0;
+			packet->data = nullptr;
 			break;
 		}
-	} while (packet.stream_index != streamIndex);
+	} while (packet->stream_index != streamIndex);
 
 	return true;
 }
@@ -338,12 +338,13 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	if (LibCallWrapper::AllocationFailed(frame, "Failed to allocate frame buffer"))
 		return false;
 
-	AVPacket packet;
-	av_init_packet(&packet);
+	AVPacket* packet(av_packet_alloc());
 
 	if (!ReadPacketFromFile(formatContext, packet))
 	{
 		av_frame_free(&frame);
+		av_packet_unref(packet);
+		av_packet_free(&packet);
 		return false;
 	}
 
@@ -356,7 +357,7 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	int returnCode(0);
 	while (returnCode != AVERROR_EOF)
 	{
-		returnCode = avcodec_send_packet(&codecContext, &packet);
+		returnCode = avcodec_send_packet(&codecContext, packet);
 		if (returnCode == AVERROR_INVALIDDATA)
 		{
 			// Do nothing - possibilities are:
@@ -369,6 +370,8 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 		else if (LibCallWrapper::FFmpegErrorCheck(returnCode, "Error sending packet from file to decoder"))
 		{
 			av_frame_free(&frame);
+			av_packet_unref(packet);
+			av_packet_free(&packet);
 			return false;
 		}
 
@@ -399,6 +402,8 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 		if (!ReadPacketFromFile(formatContext, packet))
 		{
 			av_frame_free(&frame);
+			av_packet_unref(packet);
+			av_packet_free(&packet);
 			return false;
 		}
 	}
@@ -406,6 +411,8 @@ bool AudioFile::ReadAudioFile(AVFormatContext& formatContext, AVCodecContext& co
 	ZeroFillUnusedData();
 
 	av_frame_free(&frame);
+	av_packet_unref(packet);
+	av_packet_free(&packet);
 	return true;
 }
 
