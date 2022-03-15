@@ -525,7 +525,7 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
 	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
 	config.Write(_T("fft/autoUpdateTimeSlice"), autoUpdateWindow->GetValue());
-	if (autoUpdateWindow->GetValue())
+	if (!autoUpdateWindow->GetValue())
 		config.Write(_T("fft/timeSlice"), currentTimeSlice);
 	else
 		config.Write(_T("fft/timeSlice"), 0.0);
@@ -640,6 +640,7 @@ bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
 		filterParameters = DeserializeFilterParameters(tempString);
 
 		filters.clear();
+		filterList->Clear();
 		for (const auto& fp : filterParameters)
 		{
 			filters.push_back(GetFilter(fp, 1.0));
@@ -715,38 +716,6 @@ bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
 		return false;
 	}
 
-	if (config.Read(_T("sonogram/minTime"), &tempString))
-		timeMinText->ChangeValue(tempString);
-	else
-	{
-		errorString = _T("Failed to read 'sonogram/minTime' from '") + fileName + _T("'.");
-		return false;
-	}
-
-	if (config.Read(_T("sonogram/maxTime"), &tempString))
-		timeMaxText->ChangeValue(tempString);
-	else
-	{
-		errorString = _T("Failed to read 'sonogram/maxTime' from '") + fileName + _T("'.");
-		return false;
-	}
-
-	if (config.Read(_T("sonogram/minFrequency"), &tempString))
-		frequencyMinText->ChangeValue(tempString);
-	else
-	{
-		errorString = _T("Failed to read 'sonogram/minFrequency' from '") + fileName + _T("'.");
-		return false;
-	}
-
-	if (config.Read(_T("sonogram/maxFrequency"), &tempString))
-		frequencyMaxText->ChangeValue(tempString);
-	else
-	{
-		errorString = _T("Failed to read 'sonogram/maxFrequency' from '") + fileName + _T("'.");
-		return false;
-	}
-
 	long tempLong;
 	if (config.Read(_T("video/width"), &tempLong, videoWidth))
 		videoWidth = tempLong;
@@ -785,8 +754,61 @@ bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
 		errorString = _T("Failed to transfer data to window");
 		return false;
 	}
-
+	
 	LoadFile(audioFileName->GetValue());
+	
+	// The following must be set AFTER the file is loaded to prevent overwritting
+	if (config.Read(_T("sonogram/minTime"), &tempString))
+		timeMinText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/minTime' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/maxTime"), &tempString))
+		timeMaxText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/maxTime' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/minFrequency"), &tempString))
+		frequencyMinText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/minFrequency' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/maxFrequency"), &tempString))
+		frequencyMaxText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/maxFrequency' from '") + fileName + _T("'.");
+		return false;
+	}
+	
+	if (config.Read(_T("audio/minRefTime"), &tempString))
+		normalizationReferenceTimeMin->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'audio/minRefTime' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("audio/maxRefTime"), &tempString))
+		normalizationReferenceTimeMax->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'audio/maxRefTime' from '") + fileName + _T("'.");
+		return false;
+	}
+	
+	UpdateFFTInformation();
+	UpdateSonogram();
+	UpdateWaveForm();
 
 	return true;
 }
@@ -809,11 +831,13 @@ bool MainFrame::SaveRecipe(const wxString& fileName, wxString& errorString)
 
 	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
 	config.Write(_T("audio/applyNormalization"), applyNormalization->GetValue());
+	config.Write(_T("audio/minRefTime"), normalizationReferenceTimeMin->GetValue());
+	config.Write(_T("audio/maxRefTime"), normalizationReferenceTimeMax->GetValue());
 
 	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
 	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
 	config.Write(_T("fft/autoUpdateTimeSlice"), autoUpdateWindow->GetValue());
-	if (autoUpdateWindow->GetValue())
+	if (!autoUpdateWindow->GetValue())
 		config.Write(_T("fft/timeSlice"), currentTimeSlice);
 	else
 		config.Write(_T("fft/timeSlice"), 0.0);
