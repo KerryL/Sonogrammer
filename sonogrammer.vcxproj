@@ -190,6 +190,7 @@
     <ClInclude Include="src\filterDialog.h" />
     <ClInclude Include="src\libCallWrapper.h" />
     <ClInclude Include="src\mainFrame.h" />
+    <ClInclude Include="src\radioDialog.h" />
     <ClInclude Include="src\resampler.h" />
     <ClInclude Include="src\sonogramGenerator.h" />
     <ClInclude Include="src\sonogrammerApp.h" />

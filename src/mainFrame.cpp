@@ -10,13 +10,13 @@
 #include "filter.h"
 #include "soundData.h"
 #include "staticImage.h"
-#include "filterDialog.h"
 #include "colorMapDialog.h"
 #include "dropTarget.h"
 #include "videoMaker.h"
 #include "waveFormGenerator.h"
 #include "normalizer.h"
 #include "audioEncoderInterface.h"
+#include "radioDialog.h"
 
 // wxWidgets headers
 #include <wx/listbox.h>
@@ -78,6 +78,9 @@ BEGIN_EVENT_TABLE(MainFrame, wxFrame)
 	EVT_BUTTON(idButtonLoadAudioFile,				MainFrame::LoadAudioButtonClickedEvent)
 	EVT_BUTTON(idButtonLoadSonogramConfig,			MainFrame::LoadConfigButtonClickedEvent)
 	EVT_BUTTON(idButtonSaveSonogramConfig,			MainFrame::SaveConfigButtonClickedEvent)
+	EVT_BUTTON(idLoadRecipe,						MainFrame::LoadRecipeButtonClickedEvent)
+	EVT_BUTTON(idSaveRecipe,						MainFrame::SaveRecipeButtonClickedEvent)
+	EVT_BUTTON(idBatchProcessRecipe,				MainFrame::BatchProcessRecipeButtonClickedEvent)
 	EVT_TEXT(idPrimaryControl,						MainFrame::PrimaryTextCtrlChangedEvent)
 	EVT_BUTTON(idExportSonogramImage,				MainFrame::ExportImageButtonClickedEvent)
 	EVT_BUTTON(idAddFilter,							MainFrame::AddFilterButtonClickedEvent)
@@ -148,13 +151,18 @@ void MainFrame::CreateControls()
 wxSizer* MainFrame::CreatePrimaryControls(wxWindow* parent)
 {
 	wxSizer* sizer(new wxBoxSizer(wxVERTICAL));
-	
-	wxSizer* fileNameSizer(new wxBoxSizer(wxHORIZONTAL));
-	wxSizer* configSizer(new wxBoxSizer(wxHORIZONTAL));
-	sizer->Add(fileNameSizer, wxSizerFlags().Expand());
-	sizer->Add(configSizer);
 
 	const int padding(3);
+	wxSizer* fileNameSizer(new wxBoxSizer(wxHORIZONTAL));
+	wxFlexGridSizer* configSizer(new wxFlexGridSizer(3, padding, padding));
+	sizer->Add(fileNameSizer, wxSizerFlags().Expand());
+	sizer->Add(configSizer, wxSizerFlags().Expand());
+
+	configSizer->SetFlexibleDirection(wxHORIZONTAL);
+	configSizer->AddGrowableCol(0);
+	configSizer->AddGrowableCol(1);
+	configSizer->AddGrowableCol(2);
+
 	audioFileName = new wxTextCtrl(parent, idPrimaryControl);
 	openAudioFileButton = new wxButton(parent, idButtonLoadAudioFile, _T("Open"));
 	fileNameSizer->Add(new wxStaticText(parent, wxID_ANY, _T("Audio File Name")), wxSizerFlags().Border(wxALL, 5));
@@ -164,9 +172,16 @@ wxSizer* MainFrame::CreatePrimaryControls(wxWindow* parent)
 	openConfigFileButton = new wxButton(parent, idButtonLoadSonogramConfig, _T("Load Config"));
 	saveConfigFileButton = new wxButton(parent, idButtonSaveSonogramConfig, _T("Save Config"));
 	exportSonogramImageButton = new wxButton(parent, idExportSonogramImage, _T("Export Sonogram"));
-	configSizer->Add(openConfigFileButton, wxSizerFlags().Border(wxALL, padding));
-	configSizer->Add(saveConfigFileButton, wxSizerFlags().Border(wxALL, padding));
-	configSizer->Add(exportSonogramImageButton, wxSizerFlags().Border(wxALL, padding));
+	configSizer->Add(openConfigFileButton, wxSizerFlags().Expand());
+	configSizer->Add(saveConfigFileButton, wxSizerFlags().Expand());
+	configSizer->Add(exportSonogramImageButton, wxSizerFlags().Expand());
+
+	openRecipeButton = new wxButton(parent, idLoadRecipe, _T("Load Recipe"));
+	saveRecipeButton = new wxButton(parent, idSaveRecipe, _T("Save Recipe"));
+	batchProcessRecipeButton = new wxButton(parent, idBatchProcessRecipe, _T("Batch Recipe"));
+	configSizer->Add(openRecipeButton, wxSizerFlags().Expand());
+	configSizer->Add(saveRecipeButton, wxSizerFlags().Expand());
+	configSizer->Add(batchProcessRecipeButton, wxSizerFlags().Expand());
 
 	return sizer;
 }
@@ -524,6 +539,300 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	config.Write(_T("video/videoBitRate"), videoBitRate);
 }
 
+void MainFrame::LoadRecipeButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	wxFileDialog dialog(this, _T("Load Recipe"), wxString(), wxString(),
+		_T("Sonogram recipes (*.sgRecipe)|*.sgRecipe"), wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	wxString errorString;
+	if (!LoadRecipe(dialog.GetPath(), errorString))
+		wxMessageBox("Error:  " + errorString, _T("Error"));
+}
+
+void MainFrame::SaveRecipeButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	wxFileDialog dialog(this, _T("Save Recipe"), wxString(), audioFileName->GetValue().BeforeLast(wxUniChar('.')) + _T(".sgRecipe"),
+		_T("Sonogram recipes (*.sgRecipe)|*.sgRecipe"), wxFD_SAVE | wxFD_OVERWRITE_PROMPT);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	wxString errorString;
+	if (!SaveRecipe(dialog.GetPath(), errorString))
+		wxMessageBox("Error:  " + errorString, _T("Error"));
+}
+
+void MainFrame::BatchProcessRecipeButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
+{
+	enum class OutputType
+	{
+		Audio,
+		Video
+	};
+
+	class OutputChoiceFactory : public RadioDialogItemFactory<OutputType>
+	{
+	public:
+		size_t GetCount() const override { return 2; }
+		wxString GetItemString(const unsigned int& i) const override
+		{
+			if (i == 0)
+				return _T("Audio");
+			return _T("Video");
+		}
+
+		OutputType GetItem(const unsigned int& i) const override
+		{
+			if (i == 0)
+				return OutputType::Audio;
+			return OutputType::Video;
+		}
+	};
+
+	OutputChoiceFactory factory;
+	RadioDialog<OutputType> avDialog(this, _T("Select Output Type"), factory);
+	if (avDialog.ShowModal() != wxID_OK)
+		return;
+
+	wxFileDialog dialog(this, _T("Load Recipes"), wxString(), wxString(),
+		_T("Sonogram recipes (*.sgRecipe)|*.sgRecipe"), wxFD_OPEN | wxFD_FILE_MUST_EXIST | wxFD_MULTIPLE);
+	if (dialog.ShowModal() != wxID_OK)
+		return;
+
+	wxArrayString fileNames;
+	dialog.GetPaths(fileNames);
+	for (const auto& fn : fileNames)
+	{
+		wxString errorString;
+		if (!LoadRecipe(fn, errorString))
+		{
+			if (wxMessageBox("Error:  " + errorString, _T("Error"), wxYES_NO) == wxNO)
+				break;
+		}
+
+		wxString baseFileName(audioFileName->GetValue().BeforeLast(wxUniChar('.')));
+		if (avDialog.GetSelection() == OutputType::Audio)
+			ExportAudio(baseFileName + _T(".wav"));
+		else
+			ExportVideo(baseFileName + _T(".mp4"));
+	}
+}
+
+bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
+{
+	audioFile.reset();
+
+	wxFileConfig config(wxEmptyString, wxEmptyString, fileName);
+
+	wxString tempString;
+
+	if (config.Read(_T("audioFileName"), &tempString))
+		audioFileName->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'audioFileName' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("filters"), &tempString))
+	{
+		filterParameters = DeserializeFilterParameters(tempString);
+
+		filters.clear();
+		for (const auto& fp : filterParameters)
+		{
+			filters.push_back(GetFilter(fp, 1.0));
+			filterList->Append(FilterDialog::GetFilterNamePrefix(fp));
+		}
+	}
+	else
+	{
+		errorString = _T("Failed to read 'filters' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	bool tempBool;
+	if (config.Read(_T("audio/includeFilters"), &tempBool))
+		includeFiltersInPlayback->SetValue(tempBool);
+	else
+	{
+		errorString = _T("Failed to read 'audio/includeFilters' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("audio/applyNormalization"), &tempBool))
+		applyNormalization->SetValue(tempBool);
+	else
+	{
+		errorString = _T("Failed to read 'audio/applyNormalization' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("fft/windowFunction"), &tempString))
+		windowComboBox->SetValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'fft/windowFunction' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("fft/overlap"), &tempString))
+		overlapTextBox->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'fft/overlap' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("fft/autoUpdateTimeSlice"), &tempBool))
+		autoUpdateWindow->SetValue(tempBool);
+	else
+	{
+		errorString = _T("Failed to read 'fft/autoUpdateTimeSlice' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (!config.Read(_T("fft/timeSlice"), &currentTimeSlice, 0.0))
+	{
+		errorString = _T("Failed to read 'fft/timeSlice' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/logarithmicFrequencyRange"), &tempBool))
+		logarithmicFrequencyCheckBox->SetValue(tempBool);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/logarithmicFrequencyRange' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/colorMap"), &tempString))
+		colorMap = DeserializeColorMap(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/colorMap' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/minTime"), &tempString))
+		timeMinText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/minTime' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/maxTime"), &tempString))
+		timeMaxText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/maxTime' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/minFrequency"), &tempString))
+		frequencyMinText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/minFrequency' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("sonogram/maxFrequency"), &tempString))
+		frequencyMaxText->ChangeValue(tempString);
+	else
+	{
+		errorString = _T("Failed to read 'sonogram/maxFrequency' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	long tempLong;
+	if (config.Read(_T("video/width"), &tempLong, videoWidth))
+		videoWidth = tempLong;
+	else
+	{
+		errorString = _T("Failed to read 'video/width' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("video/height"), &tempLong, videoHeight))
+		videoHeight = tempLong;
+	else
+	{
+		errorString = _T("Failed to read 'video/height' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("video/audioBitRate"), &tempLong, audioBitRate))
+		audioBitRate = tempLong;
+	else
+	{
+		errorString = _T("Failed to read 'video/audioBitRate' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (config.Read(_T("video/videoBitRate"), &tempLong, videoBitRate))
+		videoBitRate = tempLong;
+	else
+	{
+		errorString = _T("Failed to read 'video/videoBitRate' from '") + fileName + _T("'.");
+		return false;
+	}
+
+	if (!TransferDataToWindow())
+	{
+		errorString = _T("Failed to transfer data to window");
+		return false;
+	}
+
+	LoadFile(audioFileName->GetValue());
+
+	return true;
+}
+
+bool MainFrame::SaveRecipe(const wxString& fileName, wxString& errorString)
+{
+	// Like a configuration, but includes filters, audio file name, and time/frequency ranges
+
+	if (!TransferDataFromWindow())
+	{
+		errorString = _T("Failed to transfer data from window.");
+		return false;
+	}
+
+	wxFileConfig config(wxEmptyString, wxEmptyString, fileName);
+
+	config.Write(_T("audioFileName"), audioFileName->GetValue());
+
+	config.Write(_T("filters"), SerializeFilterParameters(filterParameters));
+
+	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
+	config.Write(_T("audio/applyNormalization"), applyNormalization->GetValue());
+
+	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
+	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
+	config.Write(_T("fft/autoUpdateTimeSlice"), autoUpdateWindow->GetValue());
+	if (autoUpdateWindow->GetValue())
+		config.Write(_T("fft/timeSlice"), currentTimeSlice);
+	else
+		config.Write(_T("fft/timeSlice"), 0.0);
+
+	config.Write(_T("sonogram/logarithmicFrequencyRange"), logarithmicFrequencyCheckBox->GetValue());
+	config.Write(_T("sonogram/colorMap"), SerializeColorMap(colorMap));
+	config.Write(_T("sonogram/minTime"), timeMinText->GetValue());
+	config.Write(_T("sonogram/maxTime"), timeMaxText->GetValue());
+	config.Write(_T("sonogram/minFrequency"), frequencyMinText->GetValue());
+	config.Write(_T("sonogram/maxFrequency"), frequencyMaxText->GetValue());
+
+	config.Write(_T("video/width"), videoWidth);
+	config.Write(_T("video/height"), videoHeight);
+	config.Write(_T("video/audioBitRate"), audioBitRate);
+	config.Write(_T("video/videoBitRate"), videoBitRate);
+
+	return true;
+}
+
 wxString MainFrame::SerializeColorMap(const SonogramGenerator::ColorMap& colorMap)
 {
 	std::ostringstream ss;
@@ -558,6 +867,93 @@ SonogramGenerator::ColorMap MainFrame::DeserializeColorMap(const wxString& s)
 	}
 
 	return map;
+}
+
+wxString MainFrame::SerializeFilterParameters(const std::vector<FilterParameters>& fp)
+{
+	std::ostringstream ss;
+	for (const auto& f : fp)
+	{
+		ss << GetFilterTypeString(f.type) << ',' << static_cast<int>(f.butterworth) << ',' << f.order << ','
+			<< f.cutoffFrequency << ',' << f.dampingRatio << ',' << f.width << ',' << f.numerator << ',' << f.denominator << ';';
+	}
+
+	return ss.str();
+}
+
+std::vector<FilterParameters> MainFrame::DeserializeFilterParameters(const wxString& s)
+{
+	std::vector<FilterParameters> fp;
+	std::istringstream ss(s.ToStdString());
+	std::string singleFilterParameters;
+	while (std::getline(ss, singleFilterParameters, ';'))
+		fp.push_back(DeserializeSingleFilterParameters(singleFilterParameters));
+
+	return fp;
+}
+
+FilterParameters MainFrame::DeserializeSingleFilterParameters(const wxString& s)
+{
+	FilterParameters fp;
+
+	// TODO:  Return false on error
+	std::istringstream ss(s.ToStdString());
+	std::string token;
+	if (std::getline(ss, token, ','))
+		fp.type = GetFilterTypeFromString(token);
+
+	ss >> fp.butterworth;
+	ss.ignore();
+
+	ss >> fp.order;
+	ss.ignore();
+
+	ss >> fp.cutoffFrequency;
+	ss.ignore();
+
+	ss >> fp.dampingRatio;
+	ss.ignore();
+
+	ss >> fp.width;
+	ss.ignore();
+
+	if (std::getline(ss, token, ','))
+		fp.numerator = token;
+
+	if (std::getline(ss, token, ';'))
+		fp.denominator = token;
+	
+	return fp;
+}
+
+wxString MainFrame::GetFilterTypeString(const FilterParameters::Type& t)
+{
+	if (t == FilterParameters::Type::LowPass)
+		return _T("LowPass");
+	else if (t == FilterParameters::Type::HighPass)
+		return _T("HighPass");
+	else if (t == FilterParameters::Type::BandPass)
+		return _T("BandPass");
+	else if (t == FilterParameters::Type::BandStop)
+		return _T("BandStop");
+	else if (t == FilterParameters::Type::Notch)
+		return _T("Notch");
+	return _T("Custom");
+}
+
+FilterParameters::Type MainFrame::GetFilterTypeFromString(const wxString& s)
+{
+	if (s == _T("LowPass"))
+		return FilterParameters::Type::LowPass;
+	else if (s == _T("HighPass"))
+		return FilterParameters::Type::HighPass;
+	else if (s == _T("BandPass"))
+		return FilterParameters::Type::BandPass;
+	else if (s == _T("BandStop"))
+		return FilterParameters::Type::BandStop;
+	else if (s == _T("Notch"))
+		return FilterParameters::Type::Notch;
+	return FilterParameters::Type::Custom;
 }
 
 void MainFrame::PrimaryTextCtrlChangedEvent(wxCommandEvent& WXUNUSED(event))
@@ -864,15 +1260,29 @@ void MainFrame::ExportVideoButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
 
+	ExportVideo(dialog.GetPath());
+}
+
+bool MainFrame::ExportVideo(const wxString& fileName)
+{
+	if (!filteredSoundData || !ImageInformationComplete())
+		return false;
+
+	SonogramGenerator::FFTParameters parameters;
+	if (!GetFFTParameters(parameters))
+		return false;
+
 	TransferDataFromWindow();
 
 	double startTime, endTime;
 	if (!GetTimeValues(startTime, endTime))
-		return;
+		return false;
 
 	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
 	VideoMaker videoMaker(videoWidth, videoHeight, audioBitRate * 1000, videoBitRate * 1000);
-	videoMaker.MakeVideo(segmentData, parameters, colorMap, dialog.GetPath().ToStdString());
+	videoMaker.MakeVideo(segmentData, parameters, colorMap, fileName.ToStdString());
+
+	return true;
 }
 
 void MainFrame::ExportAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
@@ -889,15 +1299,29 @@ void MainFrame::ExportAudioButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (dialog.ShowModal() == wxID_CANCEL)
 		return;
 
+	ExportAudio(dialog.GetPath());
+}
+
+bool MainFrame::ExportAudio(const wxString& fileName)
+{
+	if (!filteredSoundData || !ImageInformationComplete())
+		return false;
+
+	SonogramGenerator::FFTParameters parameters;
+	if (!GetFFTParameters(parameters))
+		return false;
+
 	TransferDataFromWindow();
 
 	double startTime, endTime;
 	if (!GetTimeValues(startTime, endTime))
-		return;
+		return false;
 
 	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
 	AudioEncoderInterface encoderInterface;
-	encoderInterface.Encode(dialog.GetPath().ToStdString(), segmentData, audioBitRate * 1000);
+	encoderInterface.Encode(fileName.ToStdString(), segmentData, audioBitRate * 1000);
+
+	return true;
 }
 
 void MainFrame::HandleNewAudioFile()

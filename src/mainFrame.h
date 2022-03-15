@@ -9,6 +9,7 @@
 // Local headers
 #include "sonogramGenerator.h"
 #include "audioRenderer.h"
+#include "filterDialog.h"
 
 // wxWidgets headers
 #include <wx/wx.h>
@@ -62,6 +63,10 @@ private:
 	wxButton* saveConfigFileButton;
 	wxButton* exportSonogramImageButton;
 
+	wxButton* openRecipeButton;
+	wxButton* saveRecipeButton;
+	wxButton* batchProcessRecipeButton;
+
 	wxButton* addFilterButton;
 	wxButton* removeFilterButton;
 	wxListBox* filterList;
@@ -114,6 +119,10 @@ private:
 		idPrimaryControl,
 		idExportSonogramImage,
 
+		idLoadRecipe,
+		idSaveRecipe,
+		idBatchProcessRecipe,
+
 		idAddFilter,
 		idRemoveFilter,
 
@@ -140,6 +149,10 @@ private:
 	void PrimaryTextCtrlChangedEvent(wxCommandEvent& event);
 	void ExportImageButtonClickedEvent(wxCommandEvent& event);
 
+	void LoadRecipeButtonClickedEvent(wxCommandEvent& event);
+	void SaveRecipeButtonClickedEvent(wxCommandEvent& event);
+	void BatchProcessRecipeButtonClickedEvent(wxCommandEvent& event);
+
 	void AddFilterButtonClickedEvent(wxCommandEvent& event);
 	void RemoveFilterButtonClickedEvent(wxCommandEvent& event);
 	void FilterListDoubleClickEvent(wxCommandEvent& event);
@@ -162,6 +175,9 @@ private:
 
 	void ExportVideoButtonClickedEvent(wxCommandEvent& event);
 	void ExportAudioButtonClickedEvent(wxCommandEvent& event);
+
+	bool ExportVideo(const wxString& fileName);
+	bool ExportAudio(const wxString& fileName);
 
 	void HandleNewAudioFile();
 	void UpdateAudioInformation();
@@ -220,6 +236,16 @@ private:
 
 	bool ValidateInputs();
 	void SetTextCtrlBackground(wxTextCtrl* textCtrl, const bool& highlight);
+
+	bool LoadRecipe(const wxString& fileName, wxString& errorString);
+	bool SaveRecipe(const wxString& fileName, wxString& errorString);
+
+	static wxString SerializeFilterParameters(const std::vector<FilterParameters>& fp);
+	static std::vector<FilterParameters> DeserializeFilterParameters(const wxString& s);
+	static FilterParameters DeserializeSingleFilterParameters(const wxString& s);
+
+	static wxString GetFilterTypeString(const FilterParameters::Type& t);
+	static FilterParameters::Type GetFilterTypeFromString(const wxString& s);
 
 	DECLARE_EVENT_TABLE();
 };

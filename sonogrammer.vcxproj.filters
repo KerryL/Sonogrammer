@@ -170,5 +170,8 @@
     <ClInclude Include="src\audioEncoderInterface.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\radioDialog.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
