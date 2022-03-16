@@ -117,7 +117,7 @@ void ColorMapDialog::OnAddButtonClickEvent(wxCommandEvent& WXUNUSED(event))
 
 	SonogramGenerator::MagnitudeColor entry(assumedNewMagnitude, assumedColor);
 	AddEntryToGrid(entry);
-	colorMap.insert(entry);
+	colorMap.push_back(entry);
 }
 
 void ColorMapDialog::OnRemoveButtonClickEvent(wxCommandEvent& WXUNUSED(event))
@@ -176,7 +176,7 @@ void ColorMapDialog::OnGridCellDoubleClickEvent(wxGridEvent& event)
 	}
 
 	colorMap.erase(GetBestMapEntry(magnitude));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(magnitude, dialog.GetColourData().GetColour()));
+	colorMap.push_back(SonogramGenerator::MagnitudeColor(magnitude, dialog.GetColourData().GetColour()));
 	mapEntryGrid->SetCellBackgroundColour(event.GetRow(), 1, dialog.GetColourData().GetColour());
 	mapEntryGrid->Refresh();
 }
@@ -217,7 +217,7 @@ void ColorMapDialog::OnGridCellChangingEvent(wxGridEvent& event)
 	}
 
 	colorMap.erase(GetBestMapEntry(oldValue));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(newValue, mapEntryGrid->GetCellBackgroundColour(event.GetRow(), 1)));
+	colorMap.push_back(SonogramGenerator::MagnitudeColor(newValue, mapEntryGrid->GetCellBackgroundColour(event.GetRow(), 1)));
 }
 
 void ColorMapDialog::PopulateInitialMap()

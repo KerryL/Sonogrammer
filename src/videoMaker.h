@@ -38,7 +38,7 @@ public:
 		: width(width), height(height), audioBitRate(audioBitRate), videoBitRate(videoBitRate) {}
 
 	bool MakeVideo(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, const std::string& fileName);
+		const SonogramGenerator::ColorMap& colorMap, const std::string& fileName);
 
 	const std::string GetErrorString() const { return errorString; }
 
@@ -55,7 +55,7 @@ private:
 	static const int yAxisWidth;
 
 	wxImage PrepareSonogram(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-		const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const;
+		const SonogramGenerator::ColorMap& colorMap, wxImage& footer) const;
 	wxImage CreateYAxisLabel(const SonogramGenerator::FFTParameters& parameters);
 	wxImage GetFrameImage(const wxImage& wholeSonogram, const wxImage& baseFrame, const wxImage& maskedFooter,
 		const double& time, const double& secondsPerPixel, const wxColor& lineColor) const;

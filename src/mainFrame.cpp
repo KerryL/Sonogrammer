@@ -436,8 +436,8 @@ void MainFrame::SetProperties()
 	SetDropTarget(new DropTarget(*this));
 
 	// Default color map
-	colorMap.insert(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
-	colorMap.insert(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
+	colorMap.push_back(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
+	colorMap.push_back(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
 	sonogramImage->SetMarkerColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 
 #ifdef __WXMSW__
@@ -887,7 +887,7 @@ SonogramGenerator::ColorMap MainFrame::DeserializeColorMap(const wxString& s)
 		if ((ssSegment >> colorValue).fail())
 			break;
 		entry.color.SetRGB(colorValue);
-		map.insert(entry);
+		map.push_back(entry);
 	}
 
 	return map;

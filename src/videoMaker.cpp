@@ -41,7 +41,7 @@ const int VideoMaker::xAxisHeight(20);
 const int VideoMaker::yAxisWidth(20);
 
 wxImage VideoMaker::PrepareSonogram(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-	const std::set<SonogramGenerator::MagnitudeColor>& colorMap, wxImage& footer) const
+	const SonogramGenerator::ColorMap& colorMap, wxImage& footer) const
 {
 	const unsigned int sonogramWidth(width - yAxisWidth);
 	const unsigned int sonogramHeight(height - xAxisHeight - footerHeight);
@@ -132,7 +132,7 @@ wxImage VideoMaker::CreateYAxisLabel(const SonogramGenerator::FFTParameters& par
 }
 
 bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const SonogramGenerator::FFTParameters& parameters,
-	const std::set<SonogramGenerator::MagnitudeColor>& colorMap, const std::string& fileName)
+	const SonogramGenerator::ColorMap& colorMap, const std::string& fileName)
 {
 	wxInitAllImageHandlers();
 

@@ -46,8 +46,8 @@ public:
 		bool operator>(const MagnitudeColor& mc) const { return magnitude > mc.magnitude; }
 	};
 
-	typedef std::set<MagnitudeColor> ColorMap;
-	wxImage GetImage(const ColorMap& colorMap) const;
+	typedef std::vector<MagnitudeColor> ColorMap;
+	wxImage GetImage(ColorMap colorMap) const;
 
 	static wxColor ComputeContrastingMarkerColor(const ColorMap& m);
 

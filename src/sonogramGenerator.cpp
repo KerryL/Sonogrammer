@@ -11,6 +11,9 @@
 #include <wx/bitmap.h>
 #include <wx/rawbmp.h>
 
+// Standard C++ headers
+#include <algorithm>
+
 SonogramGenerator::SonogramGenerator(const SoundData& soundData,
 	const FFTParameters& parameters) : soundData(soundData), parameters(parameters)
 {
@@ -38,8 +41,10 @@ wxColor SonogramGenerator::ComputeContrastingMarkerColor(const ColorMap& m)
 	return wxColor(0, 0, 0);// white
 }
 
-wxImage SonogramGenerator::GetImage(const ColorMap& colorMap) const
+wxImage SonogramGenerator::GetImage(ColorMap colorMap) const
 {
+	std::sort(colorMap.begin(), colorMap.end());
+	
 	const unsigned int colorDepth(24);
 	wxImage sonogram(frequencyData.size(), frequencyData.front().size(), colorDepth);
 	wxImagePixelData pixels(sonogram);
@@ -60,25 +65,22 @@ wxImage SonogramGenerator::GetImage(const ColorMap& colorMap) const
 
 	return sonogram;
 }
-
+#include <iostream>
 wxColor SonogramGenerator::GetScaledColorFromMap(const DatasetType& scaledMagnitude, const ColorMap& colorMap)
 {
+	//std::cout << "scaledMag = " << scaledMagnitude << std::endl;
 	MagnitudeColor lower, upper;
-	bool foundLower(false);
-	for (const auto& c : colorMap)
+	for (size_t i = 0; i < colorMap.size() - 1; ++i)
 	{
-		if (!foundLower && scaledMagnitude >= c.magnitude)
+		if (scaledMagnitude <= colorMap[i + 1].magnitude)
 		{
-			lower = c;
-			foundLower = true;
-		}
-		else if (foundLower)
-		{
-			upper = c;
+			lower = colorMap[i];
+			upper = colorMap[i + 1];
+			//std::cout << "match; range = " << lower.magnitude << " to " << upper.magnitude << std::endl;
 			break;
 		}
 	}
-
+//std::cout << "here"<<std::endl;
 	return GetInterpolatedColor(lower.color, lower.magnitude, upper.color, upper.magnitude, scaledMagnitude);
 }
 
@@ -118,10 +120,11 @@ wxColor SonogramGenerator::GetInterpolatedColor(const wxColor& lowerColor, const
 
 DatasetType SonogramGenerator::GetScaledMagnitude(const DatasetType& magnitude) const
 {
+	const float minRef(1.0e-10);
 	assert(maxMagnitude >= minMagnitude);
 	if (maxMagnitude == minMagnitude)
 		return 0.0;
-	return (magnitude - minMagnitude) / (maxMagnitude - minMagnitude);
+	return (log10(std::max(minRef, magnitude)) - log10(std::max(minRef, minMagnitude))) / (log10(maxMagnitude) - log10(std::max(minRef, minMagnitude)));
 }
 
 void SonogramGenerator::ComputeFrequencyInformation()
