@@ -437,6 +437,7 @@ void MainFrame::SetProperties()
 
 	// Default color map
 	colorMap.push_back(SonogramGenerator::MagnitudeColor(0.0, wxColor(255, 255, 255)));
+	colorMap.push_back(SonogramGenerator::MagnitudeColor(0.75, wxColor(255, 255, 255)));
 	colorMap.push_back(SonogramGenerator::MagnitudeColor(1.0, wxColor(0, 0, 0)));
 	sonogramImage->SetMarkerColor(SonogramGenerator::ComputeContrastingMarkerColor(colorMap));
 
