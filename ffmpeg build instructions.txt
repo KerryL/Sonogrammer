@@ -1,4 +1,5 @@
 This software relies on FFmpeg (www.ffmpeg.org) and libx264(https://www.videolan.org/developers/x264.html).
+The source of these libraries was not modified.
 
 The distributed windows binaries are built with git snapshots:
 x264 (available from https://code.videolan.org/videolan/x264.git):  ae03d92b52bb7581df2e75d571989cb1ecd19cbd
