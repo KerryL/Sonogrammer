@@ -294,9 +294,11 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 		"Failed to open codec"))
 		return false;
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 106, 102)
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(codecContext, "refcounted_frames", 1, 0),
 		"Failed to set decoder context to reference count"))
 		return false;
+#endif
 
 	return true;
 }

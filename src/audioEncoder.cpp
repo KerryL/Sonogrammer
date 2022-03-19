@@ -34,9 +34,11 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 	if (!DoBasicInitialization(outputFormatContext, codecId))
 		return false;
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(57, 106, 102)
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(encoderContext, "refcounted_frames", 1, 0),
 		"Failed to set encoder context to reference count"))
 		return false;
+#endif
 
 	encoderContext->sample_fmt = format;
 	encoderContext->channels = channels;
