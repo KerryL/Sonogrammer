@@ -87,6 +87,8 @@ private:
 	wxCheckBox* applyNormalization;
 	wxTextCtrl* normalizationReferenceTimeMin;
 	wxTextCtrl* normalizationReferenceTimeMax;
+	wxTextCtrl* normalizationLevel;
+	wxStaticText* addedGain;
 
 	wxSlider* resolutionSlider;
 	wxStaticText* resolutionText;
@@ -186,7 +188,7 @@ private:
 	void UpdateSonogramInformation();
 	void UpdateSonogram();
 	void ApplyFilters();
-	void ApplyNormalization();
+	void ApplyNormalization(const double& targetPower);
 	void UpdateFFTResolutionLimits();
 	void UpdateWaveForm();
 

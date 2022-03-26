@@ -256,6 +256,8 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 
 	normalizationReferenceTimeMin = new wxTextCtrl(sizer->GetStaticBox(), idNormalization);
 	normalizationReferenceTimeMax = new wxTextCtrl(sizer->GetStaticBox(), idNormalization);
+	normalizationLevel = new wxTextCtrl(sizer->GetStaticBox(), idNormalization, _T("-3"));
+	addedGain = new wxStaticText(sizer->GetStaticBox(), wxID_ANY, wxEmptyString);
 
 	buttonSizer->Add(pauseButton, wxSizerFlags().Border(wxALL, 5));
 	buttonSizer->Add(playButton, wxSizerFlags().Border(wxALL, 5));
@@ -269,14 +271,20 @@ wxSizer* MainFrame::CreateAudioControls(wxWindow* parent)
 	sizer->Add(includeFiltersInPlayback, wxSizerFlags().Border(wxALL, 5));
 	sizer->Add(applyNormalization, wxSizerFlags().Border(wxALL, 5));
 
-	wxFlexGridSizer* normalizationTimeSizer(new wxFlexGridSizer(3, 5, 5));
-	sizer->Add(normalizationTimeSizer, wxSizerFlags().Border(wxALL, 5));
-	normalizationTimeSizer->AddStretchSpacer();
-	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
-	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Max")));
-	normalizationTimeSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Reference Time (sec)")));
-	normalizationTimeSizer->Add(normalizationReferenceTimeMin);
-	normalizationTimeSizer->Add(normalizationReferenceTimeMax);
+	wxFlexGridSizer* normalizationSizer(new wxFlexGridSizer(3, 5, 5));
+	sizer->Add(normalizationSizer, wxSizerFlags().Border(wxALL, 5));
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Normalize to")));
+	normalizationSizer->Add(normalizationLevel);
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("dB")));
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Added Gain")));
+	normalizationSizer->Add(addedGain);
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("dB")));
+	normalizationSizer->AddStretchSpacer();
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Min")));
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Max")));
+	normalizationSizer->Add(new wxStaticText(sizer->GetStaticBox(), wxID_ANY, _T("Reference Time (sec)")));
+	normalizationSizer->Add(normalizationReferenceTimeMin);
+	normalizationSizer->Add(normalizationReferenceTimeMax);
 
 	wxFlexGridSizer* audioInfoSizer(new wxFlexGridSizer(2, wxSize(5, 5)));
 	sizer->Add(audioInfoSizer, wxSizerFlags().Border(wxALL, 5));
@@ -483,7 +491,12 @@ void MainFrame::LoadConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	if (config.Read(_T("audio/applyNormalization"), &tempBool))
 		applyNormalization->SetValue(tempBool);
 	
-	wxString tempString;
+	wxString tempString;	
+	if (config.Read(_T("audio/normalizationLevel"), &tempString))
+		normalizationLevel->SetValue(tempString);
+	else
+		normalizationLevel->SetValue(_T("-3"));
+		
 	if (config.Read(_T("fft/windowFunction"), &tempString))
 		windowComboBox->SetValue(tempString);
 	if (config.Read(_T("fft/overlap"), &tempString))
@@ -522,6 +535,7 @@ void MainFrame::SaveConfigButtonClickedEvent(wxCommandEvent& WXUNUSED(event))
 	
 	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
 	config.Write(_T("audio/applyNormalization"), applyNormalization->GetValue());
+	config.Write(_T("audio/normalizationLevel"), normalizationLevel->GetValue());
 	
 	config.Write(_T("fft/windowFunction"), windowComboBox->GetStringSelection());
 	config.Write(_T("fft/overlap"), overlapTextBox->GetValue());
@@ -669,6 +683,16 @@ bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
 	{
 		errorString = _T("Failed to read 'audio/applyNormalization' from '") + fileName + _T("'.");
 		return false;
+	}
+	
+	if (config.Read(_T("audio/normalizationLevel"), &tempString))
+		normalizationLevel->SetValue(tempString);
+	else
+	{
+		// Could be an older file - don't generate an error
+		//errorString = _T("Failed to read 'audio/normalizationLevel' from '") + fileName + _T("'.");
+		//return false;
+		normalizationLevel->SetValue(_T("-3"));
 	}
 
 	if (config.Read(_T("fft/windowFunction"), &tempString))
@@ -833,6 +857,7 @@ bool MainFrame::SaveRecipe(const wxString& fileName, wxString& errorString)
 
 	config.Write(_T("audio/includeFilters"), includeFiltersInPlayback->GetValue());
 	config.Write(_T("audio/applyNormalization"), applyNormalization->GetValue());
+	config.Write(_T("audio/normalizationLevel"), normalizationLevel->GetValue());
 	config.Write(_T("audio/minRefTime"), normalizationReferenceTimeMin->GetValue());
 	config.Write(_T("audio/maxRefTime"), normalizationReferenceTimeMax->GetValue());
 
@@ -1110,11 +1135,16 @@ void MainFrame::ApplyFilters()
 	for (auto& f : filters)
 		filteredSoundData = filteredSoundData->ApplyFilter(f);
 
+	addedGain->SetLabel(_T("0"));
 	if (applyNormalization->GetValue())
-		ApplyNormalization();
+	{
+		double normLeveldB;
+		if (normalizationLevel->GetValue().ToDouble(&normLeveldB))
+			ApplyNormalization(normLeveldB);
+	}
 }
 
-void MainFrame::ApplyNormalization()
+void MainFrame::ApplyNormalization(const double& targetPower)
 {
 	double startTime, endTime;
 	if (!GetTimeValues(startTime, endTime))
@@ -1133,16 +1163,29 @@ void MainFrame::ApplyNormalization()
 	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
 
 	Normalizer normalizer;
-	const double targetPower(-3.0);// [dB]
 	const auto gainFactor(normalizer.ComputeGainFactor(*segmentData, targetPower, Normalizer::Method::Peak/*AWeighted*/));
 	normalizer.Normalize(*filteredSoundData, gainFactor);
+	addedGain->SetLabel(wxString::Format(_T("%0.1f"), 20.0 * log10(gainFactor)));
 }
 
 void MainFrame::NormalizationSettingsChangedEvent(wxCommandEvent& WXUNUSED(event))
 {
-	const bool enableRefTimeControls(applyNormalization->GetValue() && !audioFileName->GetValue().IsEmpty());
-	normalizationReferenceTimeMin->Enable(enableRefTimeControls);
-	normalizationReferenceTimeMax->Enable(enableRefTimeControls);
+	const bool enableNormalizationControls(applyNormalization->GetValue() && !audioFileName->GetValue().IsEmpty());
+	normalizationReferenceTimeMin->Enable(enableNormalizationControls);
+	normalizationReferenceTimeMax->Enable(enableNormalizationControls);
+	normalizationLevel->Enable(enableNormalizationControls);
+	
+	if (applyNormalization->GetValue())
+	{
+		double normLeveldB;
+		if (!normalizationLevel->GetValue().ToDouble(&normLeveldB))
+		{
+			SetTextCtrlBackground(normalizationLevel, true);
+			return;
+		}
+		else
+			SetTextCtrlBackground(normalizationLevel, false);
+	}
 
 	ApplyFilters();
 	UpdateWaveForm();
