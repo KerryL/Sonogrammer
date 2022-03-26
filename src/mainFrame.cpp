@@ -808,6 +808,7 @@ bool MainFrame::LoadRecipe(const wxString& fileName, wxString& errorString)
 	}
 	
 	UpdateFFTInformation();
+	ApplyFilters();// This happens when the file is loaded, but we need to do it again to ensure normalization is up-to-date
 	UpdateSonogram();
 	UpdateWaveForm();
 
@@ -1122,8 +1123,14 @@ void MainFrame::ApplyNormalization()
 	double normStartTime, normEndTime;
 	if (!GetNormalizationTimeValues(normStartTime, normEndTime))
 		return;
+		
+	startTime = std::max(startTime, normStartTime);
+	endTime = std::min(endTime, normEndTime);
+		
+	if (endTime <= startTime)
+		return;// Could be in the middle of typing a number
 
-	auto segmentData(filteredSoundData->ExtractSegment(std::max(startTime, normStartTime), std::min(endTime, normEndTime)));
+	auto segmentData(filteredSoundData->ExtractSegment(startTime, endTime));
 
 	Normalizer normalizer;
 	const double targetPower(-3.0);// [dB]
