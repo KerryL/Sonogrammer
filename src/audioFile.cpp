@@ -305,11 +305,8 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 		formatContext.streams[streamIndex]->codecpar), "Failed to convert parameters to context"))
 		return false;
 
-// TODO:  Is channel layout already created here?  Below probably needs to be fixed
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	codecContext->channel_layout = AudioUtilities::GetChannelLayoutFromCount(codecContext->channels);
-#else
-	av_channel_layout_default(&codecContext->ch_layout, codecContext->ch_layout.nb_channels);
 #endif
 	codecContext->frame_size = 1024;// Correct for AAC only
 
@@ -331,14 +328,17 @@ bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& r
 #if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	if (!resampler.Initialize(codecContext.sample_rate, codecContext.channel_layout, codecContext.sample_fmt,
 		codecContext.sample_rate, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_FLTP))
+		return false;
 #else
 	AVChannelLayout outputLayout;
 	av_channel_layout_default(&outputLayout, 1);
 	if (!resampler.Initialize(codecContext.sample_rate, codecContext.ch_layout, codecContext.sample_fmt,
 		codecContext.sample_rate, outputLayout, AV_SAMPLE_FMT_FLTP))
-	av_channel_layout_uninit(&outputLayout);
-#endif
+	{
+		av_channel_layout_uninit(&outputLayout);
 		return false;
+	}
+#endif
 
 	return true;
 }
