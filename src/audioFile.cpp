@@ -111,7 +111,7 @@ AVDictionary** AudioFile::FindStreamInfoOptions(AVFormatContext* s, AVDictionary
 		return nullptr;
 
 	AVDictionary **options;
-	options = static_cast<AVDictionary**>(av_mallocz_array(s->nb_streams, sizeof(*options)));
+	options = static_cast<AVDictionary**>(av_calloc(s->nb_streams, sizeof(*options)));
 
 	if (LibCallWrapper::AllocationFailed(options, "Failed to allocate stream options dictionary"))
 		return nullptr;
@@ -159,7 +159,11 @@ bool AudioFile::ProbeAudioFile()
 
 		fileInfo.duration = s->duration * static_cast<double>(s->time_base.num) / s->time_base.den;
 		fileInfo.sampleRate = s->codecpar->sample_rate;
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 		fileInfo.channelFormat = GetChannelFormatString(s->codecpar->channel_layout, s->codecpar->channels);
+#else
+		fileInfo.channelFormat = GetChannelFormatString(s->codecpar->ch_layout);
+#endif
 		fileInfo.bitRate = s->codecpar->bit_rate;
 		fileInfo.sampleFormat = GetSampleFormatString(static_cast<AVSampleFormat>(s->codecpar->format));
 		streamIndex = i;
@@ -170,6 +174,7 @@ bool AudioFile::ProbeAudioFile()
 	return true;
 }
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 std::string AudioFile::GetChannelFormatString(const uint64_t& layout, const int& channelCount)
 {
 	if (layout == AV_CH_LAYOUT_MONO || channelCount == 1)
@@ -181,6 +186,19 @@ std::string AudioFile::GetChannelFormatString(const uint64_t& layout, const int&
 
 	return "Multi";
 }
+#else
+std::string AudioFile::GetChannelFormatString(const AVChannelLayout& layout)
+{
+	if (layout.nb_channels == 1)
+		return "Mono";
+	else if (layout.nb_channels == 2)
+		return "Stereo";
+	else if (layout.nb_channels == 4)
+		return "Quad";
+
+	return "Multi";
+}
+#endif
 
 std::string AudioFile::GetSampleFormatString(const AVSampleFormat& format)
 {
@@ -287,8 +305,13 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 		formatContext.streams[streamIndex]->codecpar), "Failed to convert parameters to context"))
 		return false;
 
+// TODO:  Is channel layout already created here?  Below probably needs to be fixed
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	codecContext->channel_layout = AudioUtilities::GetChannelLayoutFromCount(codecContext->channels);
-	codecContext->frame_size = 1024;// Is this OK?  TODO
+#else
+	av_channel_layout_default(&codecContext->ch_layout, codecContext->ch_layout.nb_channels);
+#endif
+	codecContext->frame_size = 1024;// Correct for AAC only
 
 	if (LibCallWrapper::FFmpegErrorCheck(avcodec_open2(codecContext, codec, nullptr),
 		"Failed to open codec"))
@@ -305,8 +328,16 @@ bool AudioFile::CreateCodecContext(AVFormatContext& formatContext, AVCodecContex
 
 bool AudioFile::CreateResampler(const AVCodecContext& codecContext, Resampler& resampler)
 {
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	if (!resampler.Initialize(codecContext.sample_rate, codecContext.channel_layout, codecContext.sample_fmt,
 		codecContext.sample_rate, AV_CH_LAYOUT_MONO, AV_SAMPLE_FMT_FLTP))
+#else
+	AVChannelLayout outputLayout;
+	av_channel_layout_default(&outputLayout, 1);
+	if (!resampler.Initialize(codecContext.sample_rate, codecContext.ch_layout, codecContext.sample_fmt,
+		codecContext.sample_rate, outputLayout, AV_SAMPLE_FMT_FLTP))
+	av_channel_layout_uninit(&outputLayout);
+#endif
 		return false;
 
 	return true;

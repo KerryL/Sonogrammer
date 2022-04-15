@@ -58,8 +58,14 @@ AVFrame* CopyAVFrame(const AVFrame* frameIn)
 	outFrame->format = frameIn->format;
 	outFrame->width = frameIn->width;
 	outFrame->height = frameIn->height;
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 24, 100)
 	outFrame->channels = frameIn->channels;
 	outFrame->channel_layout = frameIn->channel_layout;
+#else
+	if (LibCallWrapper::FFmpegErrorCheck(av_channel_layout_copy(&outFrame->ch_layout, &frameIn->ch_layout),
+		"Failed to copy channel layout to new frame"))
+		return nullptr;
+#endif
 	outFrame->nb_samples = frameIn->nb_samples;
 
 	if (LibCallWrapper::FFmpegErrorCheck(av_frame_get_buffer(outFrame, 32), "Failed to get frame buffer"))
@@ -119,12 +125,23 @@ struct timeval AddTime(const struct timeval& a, const unsigned int& bUsec)
 }
 
 bool SetResamplerOptions(SwrContext* swrContext,
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 24, 100)
 	const int& inputSampleRate, const uint64_t& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
 	const int& outputSampleRate, const uint64_t& outputChannelLayout, const AVSampleFormat& outputSampleFormat)
+#else
+	const int& inputSampleRate, const AVChannelLayout& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
+	const int& outputSampleRate, const AVChannelLayout& outputChannelLayout, const AVSampleFormat& outputSampleFormat)
+#endif
 {
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 24, 100)
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(swrContext, "in_channel_layout", inputChannelLayout, 0),
 		"Failed to set renderer resampler input channel layout") != 0)
 		return false;
+#else
+	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_chlayout(swrContext, "ichl", &inputChannelLayout, 0),
+		"Failed to set renderer resampler input channel layout") != 0)
+		return false;
+#endif
 
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(swrContext, "in_sample_rate", inputSampleRate, 0),
 		"Failed to set renderer resampler input sample rate") != 0)
@@ -134,9 +151,15 @@ bool SetResamplerOptions(SwrContext* swrContext,
 		"Failed to set renderer resampler input sample format") != 0)
 		return false;
 
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 24, 100)
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(swrContext, "out_channel_layout", outputChannelLayout, 0),
 		"Failed to set renderer resampler output channel layout") != 0)
 		return false;
+#else
+	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_chlayout(swrContext, "ochl", &outputChannelLayout, 0),
+		"Failed to set renderer resampler input channel layout") != 0)
+		return false;
+#endif
 
 	if (LibCallWrapper::FFmpegErrorCheck(av_opt_set_int(swrContext, "out_sample_rate", outputSampleRate, 0),
 		"Failed to set renderer resampler output sample rate") != 0)

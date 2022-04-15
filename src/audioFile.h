@@ -70,7 +70,11 @@ private:
 	bool ProbeAudioFile();
 	int streamIndex;
 
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	static std::string GetChannelFormatString(const uint64_t& layout, const int& channelCount);
+#else
+	static std::string GetChannelFormatString(const AVChannelLayout& layout);
+#endif
 	static std::string GetSampleFormatString(const AVSampleFormat& format);
 
 	// Taken from ffprobe.c and cmdutils.c files

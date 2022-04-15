@@ -36,7 +36,10 @@ Encoder::~Encoder()
 	av_packet_free(&outputPacket);
 	
 	if (inputFrame)
+	{
+		av_channel_layout_uninit(&inputFrame->ch_layout);
 		av_frame_free(&inputFrame);
+	}
 }
 
 bool Encoder::DoBasicInitialization(AVFormatContext* outputFormatContext, const AVCodecID& codecId)

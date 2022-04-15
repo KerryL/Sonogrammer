@@ -42,12 +42,12 @@ AR = ar rcs
 RANLIB = ranlib
 
 # Compiler flags
-CFLAGS = -Wall -Wextra -Werror $(INCDIRS) `wx-config --cppflags` -std=c++14 `pkg-config --cflags libavformat libswresample libavcodec libavutil libswscale sdl2`
+CFLAGS = -Wall -Wextra -Werror $(INCDIRS) `wx-config --cppflags` -std=c++14 `pkg-config --cflags libavformat libswresample libavcodec libavutil libswscale sdl2 x264 x265`
 CFLAGS_DEBUG = $(CFLAGS) -g
 CFLAGS_RELEASE = $(CFLAGS) -O2
 
 # Linker flags
-LDFLAGS = $(LIBDIRS) $(LIBS) `wx-config --libs` `pkg-config --libs libavformat libswresample libavcodec libavutil libswscale sdl2`
+LDFLAGS = $(LIBDIRS) $(LIBS) `wx-config --libs` `pkg-config --libs libavformat libswresample libavcodec libavutil libswscale sdl2 x264 x265`
 
 # Object file output directory
 OBJDIR = $(PWD)/.obj/

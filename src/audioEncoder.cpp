@@ -41,8 +41,12 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 #endif
 
 	encoderContext->sample_fmt = format;
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	encoderContext->channels = channels;
 	encoderContext->channel_layout = AV_CH_LAYOUT_MONO;
+#else
+	av_channel_layout_default(&encoderContext->ch_layout, channels);
+#endif
 	encoderContext->sample_rate = sampleRate;
 	encoderContext->time_base.num = 1;
 	encoderContext->time_base.den = sampleRate;
@@ -61,8 +65,12 @@ bool AudioEncoder::Initialize(AVFormatContext* outputFormatContext, const int& c
 		return false;
 	}
 	
+#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(59, 24, 100)
 	inputFrame->channels = 1;
 	inputFrame->channel_layout = AV_CH_LAYOUT_MONO;
+#else
+	av_channel_layout_default(&inputFrame->ch_layout, 1);
+#endif
 	inputFrame->sample_rate = sampleRate;
 	if (encoderContext->frame_size > 0)
 		inputFrame->nb_samples = encoderContext->frame_size;

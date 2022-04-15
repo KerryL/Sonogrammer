@@ -26,7 +26,10 @@ Resampler::~Resampler()
 		swr_free(&context);
 
 	if (resampledFrame)
+	{
+		av_channel_layout_uninit(&resampledFrame->ch_layout);
 		av_frame_free(&resampledFrame);
+	}
 }
 
 void Resampler::FreeAudioBuffer()
@@ -36,8 +39,13 @@ void Resampler::FreeAudioBuffer()
 	av_freep(&audioOutBuffer);
 }
 
+#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
 bool Resampler::Initialize(const int& inputSampleRate, const uint64_t& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
 	const int& outputSampleRate, const uint64_t& outputChannelLayout, const AVSampleFormat& outputSampleFormat)
+#else
+bool Resampler::Initialize(const int& inputSampleRate, const AVChannelLayout& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
+	const int& outputSampleRate, const AVChannelLayout& outputChannelLayout, const AVSampleFormat& outputSampleFormat)
+#endif
 {
 	if (context)
 		swr_free(&context);
@@ -64,7 +72,11 @@ bool Resampler::Initialize(const int& inputSampleRate, const uint64_t& inputChan
 	}
 
 	sampleRatesMatch = inputSampleRate == outputSampleRate;
+#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
 	outputChannelCount = av_get_channel_layout_nb_channels(outputChannelLayout);
+#else
+	outputChannelCount = outputChannelLayout.nb_channels;
+#endif
 	outputFormat = outputSampleFormat;
 	outputFrequency = outputSampleRate;
 	inputFrequency = inputSampleRate;
@@ -78,8 +90,14 @@ bool Resampler::Initialize(const int& inputSampleRate, const uint64_t& inputChan
 		"Failed to allocate audio output sample buffer"))
 		return false;
 
+#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
 	resampledFrame->channels = outputChannelCount;
 	resampledFrame->channel_layout = outputChannelLayout;
+#else
+	if (LibCallWrapper::FFmpegErrorCheck(av_channel_layout_copy(&resampledFrame->ch_layout, &outputChannelLayout),
+		"Failed to copy channel layout to output frame"))
+		return false;
+#endif
 	resampledFrame->format = outputFormat;
 	resampledFrame->sample_rate = outputSampleRate;
 

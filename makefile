@@ -60,4 +60,5 @@ $(OBJDIR_DEBUG)%.o: %.cpp
 clean:
 	$(RM) -r $(OBJDIR)
 	$(RM) $(BINDIR)$(TARGET)
+	$(RM) $(BINDIR)$(TARGET_D)
 	$(RM) $(VERSION_FILE)

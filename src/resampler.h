@@ -31,8 +31,13 @@ public:
 	Resampler();
 	~Resampler();
 
+#if LIBSWRESAMPLE_VERSION_INT < AV_VERSION_INT(4, 5, 100)
 	bool Initialize(const int& inputSampleRate, const uint64_t& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
 		const int& outputSampleRate, const uint64_t& outputChannelLayout, const AVSampleFormat& outputSampleFormat);
+#else
+	bool Initialize(const int& inputSampleRate, const AVChannelLayout& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
+		const int& outputSampleRate, const AVChannelLayout& outputChannelLayout, const AVSampleFormat& outputSampleFormat);
+#endif
 
 	AVFrame* Resample(const AVFrame* frame);// Must be called twice if the sample rate changes
 	int GetMaxOutputSamples() const { return maxOutputSampleCount; }

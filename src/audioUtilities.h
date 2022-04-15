@@ -41,8 +41,13 @@ struct timeval AddTime(const struct timeval& a, const struct timeval& b);
 struct timeval AddTime(const struct timeval& a, const unsigned int& bUsec);
 
 bool SetResamplerOptions(SwrContext* swrContext,
+#if LIBAVUTIL_VERSION_INT < AV_VERSION_INT(57, 24, 100)
 	const int& inputSampleRate, const uint64_t& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
 	const int& outputSampleRate, const uint64_t& outputChannelLayout, const AVSampleFormat& outputSampleFormat);
+#else
+	const int& inputSampleRate, const AVChannelLayout& inputChannelLayout, const AVSampleFormat& inputSampleFormat,
+	const int& outputSampleRate, const AVChannelLayout& outputChannelLayout, const AVSampleFormat& outputSampleFormat);
+#endif
 
 uint32_t GetSystemTimeMilliseconds();
 
