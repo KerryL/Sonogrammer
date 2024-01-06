@@ -27,7 +27,9 @@ Resampler::~Resampler()
 
 	if (resampledFrame)
 	{
+#if LIBSWRESAMPLE_VERSION_INT >= AV_VERSION_INT(4, 5, 100)
 		av_channel_layout_uninit(&resampledFrame->ch_layout);
+#endif
 		av_frame_free(&resampledFrame);
 	}
 }

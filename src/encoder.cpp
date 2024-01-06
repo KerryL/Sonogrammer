@@ -37,7 +37,9 @@ Encoder::~Encoder()
 	
 	if (inputFrame)
 	{
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 24, 100)
 		av_channel_layout_uninit(&inputFrame->ch_layout);
+#endif
 		av_frame_free(&inputFrame);
 	}
 }
