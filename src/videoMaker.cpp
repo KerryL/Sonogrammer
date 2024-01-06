@@ -147,7 +147,7 @@ bool VideoMaker::MakeVideo(const std::unique_ptr<SoundData>& soundData, const So
 
 	auto maskedFooter(footer);
 	const unsigned char grey(200);
-	const unsigned char alpha(50);
+	const unsigned char alpha(100);
 	for (int x = 0; x < maskedFooter.GetWidth(); ++x)
 	{
 		for (int y = 0; y < maskedFooter.GetHeight(); ++y)
