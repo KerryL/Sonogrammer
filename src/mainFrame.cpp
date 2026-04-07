@@ -1304,6 +1304,12 @@ void MainFrame::StopPlayingAudio()
 void MainFrame::SetControlEnablesOnPlay()
 {
 	includeFiltersInPlayback->Enable(false);
+	
+	applyNormalization->Enable(false);
+	normalizationLevel->Enable(false);
+	normalizationReferenceTimeMin->Enable(false);
+	normalizationReferenceTimeMax->Enable(false);
+	
 	playButton->Enable(false);
 	pauseButton->Enable();
 	stopButton->Enable();
@@ -1314,6 +1320,12 @@ void MainFrame::SetControlEnablesOnPlay()
 void MainFrame::SetControlEnablesOnStop()
 {
 	includeFiltersInPlayback->Enable();
+	
+	applyNormalization->Enable();
+	normalizationLevel->Enable();
+	normalizationReferenceTimeMin->Enable();
+	normalizationReferenceTimeMax->Enable();
+	
 	playButton->Enable();
 	pauseButton->Enable(false);
 	stopButton->Enable(false);
@@ -1422,6 +1434,9 @@ void MainFrame::HandleNewAudioFile()
 	}
 
 	audioFile = std::make_unique<AudioFile>(std::string(fileName.c_str()));
+	if (!audioFile || !audioFile->IsGood())
+		return;
+		
 	EnableFileDependentControls();
 
 	UpdateAudioInformation();

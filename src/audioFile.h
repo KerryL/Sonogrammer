@@ -42,6 +42,7 @@ public:
 	explicit AudioFile(const std::string& fileName);
 
 	SoundData& GetSoundData() const { return *data; }
+	bool IsGood() const { return data.get(); }
 
 	inline double GetDuration() const { return fileInfo.duration; }
 	inline int64_t GetBitRate() const { return fileInfo.bitRate; }
